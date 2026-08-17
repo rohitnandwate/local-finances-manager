@@ -1,0 +1,129 @@
+version: 1
+budgets:
+  - id: income-default
+    category: INCOME
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set to expected monthly income if you want income budget tracking.
+
+  - id: transfer-in-default
+    category: TRANSFER_IN
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Optional; transfers are usually excluded from spend targets.
+
+  - id: transfer-out-default
+    category: TRANSFER_OUT
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Optional; transfers are usually excluded from spend targets.
+
+  - id: loan-payments-default
+    category: LOAN_PAYMENTS
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set monthly debt-payment budget.
+
+  - id: bank-fees-default
+    category: BANK_FEES
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set fee budget ceiling.
+
+  - id: entertainment-default
+    category: ENTERTAINMENT
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set entertainment budget target.
+
+  - id: food-and-drink-default
+    category: FOOD_AND_DRINK
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set food and drink budget target.
+
+  - id: general-merchandise-default
+    category: GENERAL_MERCHANDISE
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set general merchandise budget target.
+
+  - id: home-improvement-default
+    category: HOME_IMPROVEMENT
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set home improvement budget target.
+
+  - id: medical-default
+    category: MEDICAL
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set medical spending budget target.
+
+  - id: personal-care-default
+    category: PERSONAL_CARE
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set personal care budget target.
+
+  - id: general-services-default
+    category: GENERAL_SERVICES
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set general services budget target.
+
+  - id: government-and-non-profit-default
+    category: GOVERNMENT_AND_NON_PROFIT
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set taxes, donations, and similar budget target.
+
+  - id: transportation-default
+    category: TRANSPORTATION
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set transportation budget target.
+
+  - id: travel-default
+    category: TRAVEL
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set travel budget target.
+
+  - id: rent-and-utilities-default
+    category: RENT_AND_UTILITIES
+    amount: 0
+    cadence: monthly
+    effectiveStart: 2026-01-01
+    effectiveEnd:
+    note: Set rent and utilities budget target.

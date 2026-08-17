@@ -1,0 +1,13 @@
+# Pre-publish / CI secret scan (gitleaks).
+# Run: `npm run scan:secrets` (requires gitleaks on PATH; install: https://github.com/gitleaks/gitleaks )
+
+title = "local-finances-manager"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Example files and known safe placeholders"
+paths = [
+  '''\.env\.example$''',
+]

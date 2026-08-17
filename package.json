@@ -1,0 +1,61 @@
+{
+  "name": "local-finances-manager",
+  "version": "1.0.0",
+  "description": "Local-first personal finances manager with Plaid, exports, budgets, and optional LLM-assisted category review and briefings.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "npm run typecheck && npm run smoke:keychain",
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/server.js",
+    "typecheck": "tsc --noEmit",
+    "smoke:bl07": "node scripts/bl07-smoke-test.mjs",
+    "smoke:bl08": "node scripts/bl08-smoke-test.mjs",
+    "smoke:bl09": "node scripts/bl09-smoke-test.mjs",
+    "smoke:keychain": "node scripts/keychain-isolation-smoke.mjs",
+    "smoke:bl09-recurring": "node scripts/bl09-recurring-regression.mjs",
+    "smoke:bl11": "node scripts/bl11-smoke-test.mjs",
+    "smoke:bl12": "node scripts/bl12-smoke-test.mjs",
+    "scan:secrets": "node scripts/run-gitleaks.mjs --detect",
+    "scan:secrets:staged": "node scripts/run-gitleaks.mjs --staged",
+    "setup:hooks": "node scripts/setup-git-hooks.mjs",
+    "onboard": "node scripts/onboard.mjs",
+    "init": "node scripts/init.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rohitnandwate/local-finances-manager.git"
+  },
+  "homepage": "https://github.com/rohitnandwate/local-finances-manager#readme",
+  "bugs": {
+    "url": "https://github.com/rohitnandwate/local-finances-manager/issues"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.68",
+    "@ai-sdk/google": "^3.0.60",
+    "@ai-sdk/openai": "^3.0.52",
+    "ai": "^6.0.154",
+    "dotenv": "^17.3.1",
+    "duckdb": "^1.4.4",
+    "express": "^5.2.1",
+    "plaid": "^41.4.0",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}

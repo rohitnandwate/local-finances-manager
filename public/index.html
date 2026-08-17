@@ -1,0 +1,3528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budget Tracker — Financial Intelligence</title>
+    <script>
+      (function() {
+        var s = localStorage.getItem("theme");
+        if (s === "light" || s === "dark") document.documentElement.setAttribute("data-theme", s);
+      })();
+    </script>
+    <style>
+      :root, [data-theme="dark"] {
+        color-scheme: dark;
+        --bg:         #0f172a; --fg:         #e2e8f0;
+        --card-bg:    #111827; --border:     #334155;
+        --surface:    #0b1220; --surface-b:  #1e293b;
+        --deep:       #020617;
+        --muted:      #94a3b8; --placeholder:#64748b;
+        --accent:     #2563eb; --accent-fg:  white;
+        --secondary:  #475569;
+        --banner-bg:  #172033;
+        --heading:    #93c5fd; --highlight:  #fbbf24;
+        --pill-fg:    #cbd5e1;
+        --chat-user-bg: #1e3a5f;
+        --chat-asst-bg: #172033;
+        --warn-bg:    rgba(245,158,11,0.14); --warn-border:rgba(245,158,11,0.35); --warn-fg: #fde68a;
+        --ok-bg:      rgba(34,197,94,0.14);  --ok-border: rgba(34,197,94,0.35);  --ok-fg:   #86efac;
+        --pill-warn-fg: #fcd34d;
+        --link:       #93c5fd;
+        --copy-bg:    #1e293b; --copy-hover: #334155;
+        --accept-bg:  #16a34a;
+        --reject-bg:  #dc2626;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme="dark"]) {
+          color-scheme: light;
+          --bg:         #f8fafc; --fg:         #1e293b;
+          --card-bg:    #ffffff; --border:     #e2e8f0;
+          --surface:    #f1f5f9; --surface-b:  #e2e8f0;
+          --deep:       #ffffff;
+          --muted:      #64748b; --placeholder:#94a3b8;
+          --accent:     #2563eb; --accent-fg:  white;
+          --secondary:  #94a3b8;
+          --banner-bg:  #f1f5f9;
+          --heading:    #1d4ed8; --highlight:  #d97706;
+          --pill-fg:    #475569;
+          --chat-user-bg: #dbeafe;
+          --chat-asst-bg: #f1f5f9;
+          --warn-bg:    rgba(245,158,11,0.10); --warn-border:rgba(245,158,11,0.40); --warn-fg: #92400e;
+          --ok-bg:      rgba(34,197,94,0.10);  --ok-border: rgba(34,197,94,0.40);  --ok-fg:   #166534;
+          --pill-warn-fg: #92400e;
+          --link:       #2563eb;
+          --copy-bg:    #e2e8f0; --copy-hover: #cbd5e1;
+          --accept-bg:  #15803d;
+          --reject-bg:  #b91c1c;
+        }
+      }
+
+      [data-theme="light"] {
+        color-scheme: light;
+        --bg:         #f8fafc; --fg:         #1e293b;
+        --card-bg:    #ffffff; --border:     #e2e8f0;
+        --surface:    #f1f5f9; --surface-b:  #e2e8f0;
+        --deep:       #ffffff;
+        --muted:      #64748b; --placeholder:#94a3b8;
+        --accent:     #2563eb; --accent-fg:  white;
+        --secondary:  #94a3b8;
+        --banner-bg:  #f1f5f9;
+        --heading:    #1d4ed8; --highlight:  #d97706;
+        --pill-fg:    #475569;
+        --chat-user-bg: #dbeafe;
+        --chat-asst-bg: #f1f5f9;
+        --warn-bg:    rgba(245,158,11,0.10); --warn-border:rgba(245,158,11,0.40); --warn-fg: #92400e;
+        --ok-bg:      rgba(34,197,94,0.10);  --ok-border: rgba(34,197,94,0.40);  --ok-fg:   #166534;
+        --pill-warn-fg: #92400e;
+        --link:       #2563eb;
+        --copy-bg:    #e2e8f0; --copy-hover: #cbd5e1;
+        --accept-bg:  #15803d;
+        --reject-bg:  #b91c1c;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+
+      h1, h2 { margin-bottom: 12px; }
+      p, li   { line-height: 1.5; }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+
+      .card h3 { margin-top: 0; }
+
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .actions.m0 { margin: 0; }
+      .actions.mb16 { margin-bottom: 16px; }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .section-head h2 { margin: 0; }
+      .kv.mb12 { margin-bottom: 12px; }
+      .stack-top-16 { margin-top: 16px; }
+      .stack-top-20 { margin-top: 20px; }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        background: var(--accent);
+        color: var(--accent-fg);
+        cursor: pointer;
+      }
+
+      button.secondary { background: var(--secondary); color: white; }
+      button:disabled   { opacity: 0.6; cursor: wait; }
+
+      .secondary-text { color: var(--muted); }
+
+      .banner {
+        margin-bottom: 12px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--banner-bg);
+        color: var(--fg);
+      }
+
+      .banner.warn {
+        border-color: var(--warn-border);
+        background: var(--warn-bg);
+        color: var(--warn-fg);
+      }
+
+      .grid     { display: grid; gap: 16px; }
+      .grid.two { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+      }
+
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--surface-b);
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .stat-label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .stat-value { font-size: 20px; font-weight: 700; }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid var(--border);
+        background: var(--banner-bg);
+        color: var(--pill-fg);
+      }
+
+      .pill.success {
+        background: var(--ok-bg);
+        color: var(--ok-fg);
+        border-color: var(--ok-border);
+      }
+
+      .pill.warn {
+        background: var(--warn-bg);
+        color: var(--pill-warn-fg);
+        border-color: var(--warn-border);
+      }
+
+      .pill-green {
+        background: var(--ok-bg);
+        color: var(--ok-fg);
+        border-color: var(--ok-border);
+      }
+      .pill-blue {
+        background: #e8f0fe;
+        color: #1a56db;
+        border-color: #93b4f4;
+      }
+      .pill-muted {
+        opacity: 0.6;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .data-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 2px solid var(--border);
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--secondary);
+      }
+      .data-table td {
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .data-table td.truncate {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .data-table tr:hover td {
+        background: var(--surface);
+      }
+      .data-table .mono {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+      }
+      .data-table tr.expandable { cursor: pointer; }
+      .data-table tr.expand-row td { padding: 0; border-bottom: 1px solid var(--border); }
+      .data-table tr.expand-row:hover td { background: none; }
+      .expand-panel {
+        padding: 12px 16px;
+        background: var(--surface);
+      }
+      .expand-panel .detail-sections { display: flex; flex-direction: column; gap: 8px; }
+      .expand-panel details { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+      .expand-panel details summary {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        background: var(--bg);
+        user-select: none;
+      }
+      .expand-panel details summary:hover { background: var(--surface-b); }
+      .expand-panel .detail-body { padding: 10px 12px; font-size: 13px; }
+      .expand-panel .detail-body .kv-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 16px;
+      }
+      .expand-panel .detail-body .kv-grid dt { color: var(--secondary); }
+      .expand-panel .detail-body .kv-grid dd { margin: 0; }
+      .expand-panel .sub-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      .expand-panel .sub-table th {
+        text-align: left; padding: 4px 8px;
+        border-bottom: 1px solid var(--border); color: var(--secondary); font-size: 11px;
+      }
+      .expand-panel .sub-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
+
+      .list { display: grid; gap: 12px; }
+
+      .item-card {
+        background: var(--surface);
+        border: 1px solid var(--surface-b);
+        border-radius: 10px;
+        padding: 14px;
+      }
+
+      .item-card-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 10px;
+      }
+
+      .item-card-title { margin: 0; }
+
+      .kv {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .kv div {
+        background: var(--deep);
+        border: 1px solid var(--surface-b);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .kv dt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+      .kv dd { margin: 0; font-weight: 600; }
+
+      .account-list,
+      .transaction-list { display: grid; gap: 10px; margin-top: 12px; }
+
+      .mini-card {
+        border: 1px solid var(--surface-b);
+        border-radius: 8px;
+        padding: 10px;
+        background: var(--deep);
+      }
+
+      .mini-card strong { display: block; margin-bottom: 6px; }
+
+      details { margin-top: 12px; }
+      summary { cursor: pointer; color: var(--link); }
+
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--deep);
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+      }
+
+      code { font-family: "SFMono-Regular", Consolas, monospace; }
+
+      .briefing-content { line-height: 1.7; }
+
+      .briefing-content h1,
+      .briefing-content h2,
+      .briefing-content h3 { color: var(--heading); margin-top: 16px; margin-bottom: 8px; }
+
+      .briefing-content strong { color: var(--highlight); }
+      .briefing-content ul, .briefing-content ol { padding-left: 20px; }
+      .briefing-content li { margin-bottom: 4px; }
+
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 8px 0;
+      }
+
+      .chat-message { padding: 12px 14px; border-radius: 10px; line-height: 1.6; }
+
+      .chat-message.user {
+        align-self: flex-end;
+        max-width: 85%;
+        background: var(--chat-user-bg);
+        border: 1px solid var(--accent);
+        color: var(--fg);
+      }
+
+      .chat-message.assistant {
+        background: var(--chat-asst-bg);
+        border: 1px solid var(--border);
+        color: var(--fg);
+      }
+
+      .chat-message strong { color: var(--highlight); }
+
+      .chat-message h1,
+      .chat-message h2,
+      .chat-message h3 { color: var(--heading); margin-top: 8px; margin-bottom: 4px; font-size: 14px; }
+
+      .chat-input-row { display: flex; gap: 8px; }
+
+      .chat-input-row input {
+        flex: 1;
+        background: var(--deep);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      .chat-input-row input:focus { border-color: var(--accent); }
+      .chat-input-row input::placeholder { color: var(--placeholder); }
+
+      .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--copy-bg);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .copy-btn:hover { background: var(--copy-hover); color: var(--fg); }
+
+      .copy-btn.copied {
+        background: var(--ok-bg);
+        border-color: var(--ok-border);
+        color: var(--ok-fg);
+      }
+
+      .briefing-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chat-message-wrapper { display: flex; flex-direction: column; gap: 4px; max-width: 85%; }
+      .chat-message-wrapper.user { align-self: flex-end; }
+      .chat-message-wrapper.assistant { align-self: flex-start; }
+      .chat-message-wrapper .copy-btn { align-self: flex-start; }
+
+      .theme-toggle {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        font-size: 12px;
+      }
+      .theme-toggle button {
+        border: 0;
+        border-radius: 0;
+        padding: 5px 10px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .theme-toggle button.active {
+        background: var(--accent);
+        color: var(--accent-fg);
+      }
+      .theme-toggle button:not(:last-child) {
+        border-right: 1px solid var(--border);
+      }
+
+      .loading-dots::after {
+        content: '';
+        animation: dots 1.5s steps(3, end) infinite;
+      }
+
+      @keyframes dots {
+        0% { content: ''; }
+        33% { content: '.'; }
+        66% { content: '..'; }
+        100% { content: '...'; }
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--accent);
+        color: var(--accent-fg);
+        margin-left: 8px;
+      }
+
+      .badge.empty { background: var(--secondary); opacity: 0.5; }
+      .tab-nav {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+        margin: 16px 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--card-bg);
+      }
+      .tab-nav button {
+        background: var(--surface);
+        border: 1px solid var(--surface-b);
+        color: var(--muted);
+        padding: 8px 12px;
+      }
+      .tab-nav button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-fg);
+      }
+      .tab-hidden { display: none !important; }
+      .chat-section {
+        display: none;
+        margin-top: 20px;
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+      }
+      .form-input {
+        background: var(--deep);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 8px;
+        width: 100%;
+      }
+      .review-status { margin-bottom: 12px; }
+      .review-empty { margin-top: 8px; }
+      .expand-toggle {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 0;
+        font-size: 16px;
+        line-height: 1;
+      }
+      .inline-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .mini-actions { display: flex; gap: 6px; }
+      .merchant-rules-list { display: grid; gap: 10px; }
+      .mono-id { font-size: 11px; word-break: break-all; }
+
+      .review-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 13px;
+        margin-top: 12px;
+      }
+
+      .review-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 2px solid var(--border);
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: normal;
+      }
+
+      .review-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--surface-b);
+        vertical-align: top;
+        word-break: break-word;
+      }
+
+      .review-table th:nth-child(1),
+      .review-table td:nth-child(1) { width: 28px; }
+      .review-table th:nth-child(2),
+      .review-table td:nth-child(2) { width: 24%; }
+      .review-table th:nth-child(3),
+      .review-table td:nth-child(3) { width: 11%; }
+      .review-table th:nth-child(4),
+      .review-table td:nth-child(4) { width: 10%; }
+      .review-table th:nth-child(5),
+      .review-table td:nth-child(5) { width: 12%; }
+      .review-table th:nth-child(6),
+      .review-table td:nth-child(6) { width: 4%; text-align: center; }
+      .review-table th:nth-child(7),
+      .review-table td:nth-child(7) { width: 12%; }
+      .review-table th:nth-child(8),
+      .review-table td:nth-child(8) { width: 27%; }
+
+      .review-group-row td {
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 12px;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding-top: 6px;
+        padding-bottom: 6px;
+      }
+      .review-group-toggle {
+        all: unset;
+        cursor: pointer;
+      }
+      .match-badge {
+        display: inline-block;
+        margin-top: 4px;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        background: var(--card-bg);
+      }
+      .match-badge.entity { border-color: #1d4ed8; color: #1d4ed8; }
+      .match-badge.name { border-color: #0f766e; color: #0f766e; }
+      .match-badge.limited { border-color: #b45309; color: #b45309; }
+
+      .review-table tr:hover td { background: var(--surface); }
+
+      .review-table .expand-row td {
+        padding: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .review-table .expand-row td > div {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.25s ease, padding 0.25s ease;
+        padding: 0 10px;
+      }
+
+      .review-table .expand-row.open td > div {
+        max-height: 500px;
+        padding: 12px 10px 16px;
+      }
+
+      .review-detail {
+        background: var(--surface);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .review-detail .reasoning {
+        color: var(--muted);
+        font-style: italic;
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+
+      .review-detail .edit-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+
+      .review-detail select {
+        background: var(--deep);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+
+      .review-detail label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .review-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .review-actions button { font-size: 12px; padding: 6px 12px; }
+
+      button.accept { background: var(--accept-bg); color: white; }
+      button.reject { background: var(--reject-bg); color: white; }
+      button.edit-cat { background: var(--secondary); color: white; }
+
+      .cat-arrow {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1;
+      }
+      .text-warn { color: var(--warn-fg); }
+      .budget-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+      }
+      .budget-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) 120px 110px 100px 90px;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--surface-b);
+        font-size: 13px;
+      }
+      .budget-row.header {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        border-bottom: 2px solid var(--border);
+      }
+      .budget-status {
+        font-size: 11px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 3px 8px;
+        border: 1px solid var(--border);
+      }
+      .budget-status.over {
+        background: var(--warn-bg);
+        border-color: var(--warn-border);
+        color: var(--pill-warn-fg);
+      }
+      .budget-status.under {
+        background: var(--ok-bg);
+        border-color: var(--ok-border);
+        color: var(--ok-fg);
+      }
+    </style>
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  </head>
+  <body>
+    <main>
+      <div class="inline-row">
+        <h1 style="margin:0;">Budget Tracker — Financial Intelligence</h1>
+        <div class="theme-toggle" id="theme-toggle">
+          <button data-theme="system" aria-pressed="false">System</button>
+          <button data-theme="light" aria-pressed="false">Light</button>
+          <button data-theme="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+      <p>
+        Personal finance tool with Plaid connectivity, transaction intelligence,
+        AI-powered briefings and chat, and LLM-assisted category review.
+        Use the briefing panel to understand spending, ask follow-up questions in the chat,
+        or run a category review on the Review tab.
+      </p>
+
+      <nav class="tab-nav" id="tab-nav" aria-label="Main sections">
+        <button class="active" data-tab-target="analyze">Analyze</button>
+        <button data-tab-target="recurring">Recurring</button>
+        <button data-tab-target="review">Review</button>
+        <button data-tab-target="investments">Investments</button>
+        <button data-tab-target="data">Data</button>
+        <button data-tab-target="connect">Connect</button>
+      </nav>
+
+      <section class="card" id="intelligence-section" data-tab-group="analyze">
+        <h2>Financial Intelligence</h2>
+        <p class="secondary-text">
+          Generate an AI-powered briefing of your financial health, then ask
+          follow-up questions. The same <code>LLM_PROVIDER</code> and API key power
+          <strong>Run Category Review</strong> on the Review tab.
+          Supports OpenAI, Anthropic, and Google.
+          Requires at least one connected institution with transactions.
+        </p>
+        <div class="kv mb12">
+          <div>
+            <dt>From date</dt>
+            <dd><input id="briefing-from" type="date" class="form-input" /></dd>
+          </div>
+          <div>
+            <dt>To date</dt>
+            <dd><input id="briefing-to" type="date" class="form-input" /></dd>
+          </div>
+        </div>
+        <div class="actions mb16">
+          <button id="briefing-button">Generate Briefing</button>
+        </div>
+        <div id="briefing-output"></div>
+
+        <div id="chat-section" class="chat-section">
+          <h3>Ask a Follow-up Question</h3>
+          <div id="chat-messages" class="chat-container"></div>
+          <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="e.g. How much did I spend on groceries last month?" />
+            <button id="chat-send">Ask</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="budget-review-section" data-tab-group="analyze">
+        <div class="section-head">
+          <h2>Budget Review</h2>
+          <div class="actions m0">
+            <button id="budget-refresh-button">Refresh</button>
+          </div>
+        </div>
+        <p class="secondary-text">
+          Uses the same date range as the Financial Intelligence section above. Budget
+          rules are loaded from <code>context/budgets.yml</code> and prorated
+          to daily expected spend for the selected window.
+        </p>
+        <div id="budget-status" class="review-status"></div>
+        <div id="budget-last-updated" class="secondary-text"></div>
+        <div id="budget-summary" class="stack-top-16"></div>
+        <div id="budget-items" class="stack-top-16"></div>
+      </section>
+
+      <section class="card" id="recurring-section" data-tab-group="recurring">
+        <div class="section-head">
+          <h2>Recurring Transactions</h2>
+          <div class="actions m0">
+            <button id="recurring-refresh-button">Refresh</button>
+            <button id="recurring-export-button">Download TSV</button>
+          </div>
+        </div>
+        <p class="secondary-text">
+          Detected from your synced transaction history using local pattern analysis.
+          Sync your accounts to update the underlying data.
+        </p>
+        <div class="kv mb12">
+          <div>
+            <dt>From date</dt>
+            <dd><input id="recurring-from" type="date" class="form-input" /></dd>
+          </div>
+          <div>
+            <dt>To date</dt>
+            <dd><input id="recurring-to" type="date" class="form-input" /></dd>
+          </div>
+        </div>
+        <div id="recurring-status" class="review-status"></div>
+        <div id="recurring-summary" class="stack-top-16"></div>
+        <div id="recurring-outflows" class="stack-top-16"></div>
+        <div id="recurring-inflows" class="stack-top-16"></div>
+      </section>
+
+      <section class="card" id="review-section" data-tab-group="review">
+        <div class="section-head">
+          <h2>Review Categories <span id="review-badge" class="badge empty">0</span></h2>
+          <div class="actions m0">
+            <button id="review-run-button">Run Category Review</button>
+          </div>
+        </div>
+        <p class="secondary-text">
+          LLM-assisted category review flags likely miscategorized transactions.
+          Accept suggestions, reject them, or manually re-categorize.
+          Overrides apply to all briefings, exports, and queries.
+        </p>
+        <div class="kv mb12">
+          <div>
+            <dt>From date</dt>
+            <dd><input id="review-from" type="date" class="form-input" /></dd>
+          </div>
+          <div>
+            <dt>To date</dt>
+            <dd><input id="review-to" type="date" class="form-input" /></dd>
+          </div>
+        </div>
+        <label class="secondary-text">
+          <input id="review-force-rerun" type="checkbox" />
+          Force re-review of previously cleared transactions
+        </label>
+        <div id="review-status" class="review-status"></div>
+        <div id="review-table-container"></div>
+      </section>
+
+      <section class="card" id="merchant-rules-section" data-tab-group="review">
+        <div class="section-head">
+          <h2>Merchant Rules</h2>
+          <div class="actions m0">
+            <button id="merchant-rules-refresh-button" class="secondary">Refresh</button>
+          </div>
+        </div>
+        <p class="secondary-text">
+          Review and manage merchant-level category rules inferred from accepted edits.
+        </p>
+        <div id="merchant-rules-status" class="review-status"></div>
+        <div id="merchant-rules-list" class="merchant-rules-list">
+          <div class="secondary-text">Loading...</div>
+        </div>
+        <div class="stack-top-16">
+          <h3>Delete Override by Transaction ID</h3>
+          <div class="actions">
+            <input id="delete-override-transaction-id" class="form-input" placeholder="transaction_id" />
+            <button id="delete-override-button" class="secondary">Delete Override</button>
+          </div>
+          <div id="delete-override-status" class="review-status"></div>
+        </div>
+      </section>
+
+      <section class="card" id="provider-status-section" data-tab-group="connect">
+        <h2>Provider Status</h2>
+        <div class="grid two">
+          <div>
+            <div id="provider-summary">Loading...</div>
+          </div>
+          <div>
+            <div id="session-summary">Loading...</div>
+          </div>
+        </div>
+        <details open>
+          <summary>Saved institutions and items</summary>
+          <div id="saved-items" class="list"></div>
+        </details>
+        <details>
+          <summary>Raw health JSON</summary>
+          <pre id="health-output">Loading...</pre>
+        </details>
+      </section>
+
+      <section class="card" id="actions-section" data-tab-group="connect">
+        <h2>Actions</h2>
+        <div class="actions">
+          <button id="connect-button">Connect with Plaid</button>
+          <button id="update-consent-button" class="secondary">
+            Update Plaid consent
+          </button>
+          <button id="refresh-button" class="secondary">
+            Refresh saved sessions
+          </button>
+          <button id="refetch-history-button" class="secondary">
+            Force refetch full history
+          </button>
+          <button id="investment-sync-plaid-button" class="secondary">
+            Sync Plaid Investments
+          </button>
+          <button id="reset-button" class="secondary">Reset local sessions</button>
+        </div>
+        <div id="investment-connect-status" class="secondary-text" style="margin-top: 10px;"></div>
+        <div class="kv mb12">
+          <div>
+            <dt>Consent update item</dt>
+            <dd>
+              <select id="update-consent-item" class="form-input">
+                <option value="">Auto-select when only one item exists</option>
+              </select>
+            </dd>
+          </div>
+        </div>
+        <p>
+          Configure <code>PLAID_CLIENT_ID</code>, set
+          <code>PLAID_ENV</code>, and provide the matching Plaid secret before
+          connecting. The local session stores item metadata in
+          <code>.data/plaid-session.json</code>. Plaid access tokens are kept
+          exclusively in macOS Keychain and never written to disk.
+        </p>
+      </section>
+
+      <section class="card" id="investments-ingest-section" data-tab-group="data">
+        <h2>Investment Data Management</h2>
+        <p class="secondary-text">
+          Import brokerage holdings files and rebuild normalized investment data.
+        </p>
+        <div class="kv mb12">
+          <div>
+            <dt>Institution label</dt>
+            <dd><input id="investment-institution" type="text" class="form-input" placeholder="Fidelity" /></dd>
+          </div>
+          <div>
+            <dt>Holdings file</dt>
+            <dd><input id="investment-file" type="file" class="form-input" accept=".csv,.tsv,text/csv,text/tab-separated-values" /></dd>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="investment-import-button" class="secondary">Import Holdings CSV</button>
+          <button id="investment-normalize-button" class="secondary">Rebuild Normalized Master List</button>
+        </div>
+        <div id="investment-data-status" class="secondary-text" style="margin-top: 12px;"></div>
+      </section>
+
+      <section class="card" id="investments-section" data-tab-group="investments">
+        <h2>Investments</h2>
+        <p class="secondary-text">
+          Read-focused investment dashboard with snapshot, holdings, activity, and diagnostics views.
+        </p>
+        <div class="actions">
+          <button id="investment-refresh-summary-button" class="secondary">Refresh Portfolio Summary</button>
+        </div>
+        <div class="kv mb12" style="margin-top: 12px;">
+          <div>
+            <dt>Account classification override</dt>
+            <dd>
+              <select id="investment-account-select" class="form-input">
+                <option value="">Select account</option>
+              </select>
+            </dd>
+          </div>
+          <div>
+            <dt>Classification</dt>
+            <dd>
+              <select id="investment-account-classification" class="form-input">
+                <option value="retirement">retirement</option>
+                <option value="taxable">taxable</option>
+                <option value="unknown">unknown</option>
+              </select>
+            </dd>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="investment-account-classification-save-button" class="secondary">
+            Save Account Classification
+          </button>
+        </div>
+        <div id="investment-status" class="secondary-text" style="margin-top: 12px;"></div>
+        <div id="investment-summary" class="list" style="margin-top: 12px;"></div>
+        <h3 style="margin-top: 16px;">Useful-first Views</h3>
+        <div id="investment-useful-views" class="list" style="margin-top: 12px;"></div>
+      </section>
+
+      <section class="card" id="export-section" data-tab-group="data">
+        <h2>Export</h2>
+        <p class="secondary-text">
+          Generate TSV reports to the <code>exports/</code> directory.
+          Optionally specify a date range (defaults vary by report type).
+        </p>
+        <div class="kv mb12">
+          <div>
+            <dt>From date</dt>
+            <dd><input id="export-from" type="date" class="form-input" /></dd>
+          </div>
+          <div>
+            <dt>To date</dt>
+            <dd><input id="export-to" type="date" class="form-input" /></dd>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="export-button" data-type="transactions-all">Export All Transactions</button>
+          <button class="export-button secondary" data-type="category-summary">Category Summary</button>
+          <button class="export-button secondary" data-type="income-expense-summary">Income vs Expense</button>
+          <button class="export-button secondary" data-type="transfer-pairs">Transfer Pairs</button>
+          <button class="export-button secondary" data-type="transfers-all">All Transfers</button>
+          <button class="export-button secondary" data-type="holdings-all">Investment Holdings</button>
+          <button class="export-button secondary" data-type="investment-transactions">Investment Transactions</button>
+          <button class="export-button secondary" data-type="holdings-normalized-master">Normalized Holdings Master</button>
+        </div>
+        <div id="export-result" class="secondary-text" style="margin-top: 12px;"></div>
+      </section>
+
+      <section class="card" id="file-browser-section" data-tab-group="data">
+        <h2>File Browser</h2>
+        <p class="secondary-text">
+          View exported TSV reports and context/config files.
+        </p>
+        <div class="actions mb16">
+          <button id="files-refresh-button" class="secondary">Refresh</button>
+        </div>
+        <div id="files-exports-group">
+          <h3>Exported Files</h3>
+          <div id="files-exports-list" class="list">
+            <div class="secondary-text">Loading...</div>
+          </div>
+        </div>
+        <div id="files-context-group" class="stack-top-16">
+          <h3>Context Files</h3>
+          <div id="files-context-list" class="list">
+            <div class="secondary-text">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="latest-result-section" data-tab-group="connect">
+        <h2>Latest Result</h2>
+        <div id="result-summary" class="secondary-text">No result yet.</div>
+        <div id="result-items" class="list"></div>
+        <details>
+          <summary>Raw result JSON</summary>
+          <pre id="result-output">No result yet.</pre>
+        </details>
+      </section>
+    </main>
+
+    <script>
+      // Theme toggle
+      (function initTheme() {
+        const toggle = document.getElementById("theme-toggle");
+        const stored = localStorage.getItem("theme") || "system";
+
+        function apply(choice) {
+          localStorage.setItem("theme", choice);
+          if (choice === "system") {
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            document.documentElement.setAttribute("data-theme", choice);
+          }
+          for (const btn of toggle.querySelectorAll("button")) {
+            const active = btn.dataset.theme === choice;
+            btn.classList.toggle("active", active);
+            btn.setAttribute("aria-pressed", active ? "true" : "false");
+          }
+        }
+
+        toggle.addEventListener("click", (e) => {
+          if (e.target.dataset.theme) apply(e.target.dataset.theme);
+        });
+
+        apply(stored);
+      })();
+
+      // Top-level tab navigation
+      (function initTabs() {
+        const tabNav = document.getElementById("tab-nav");
+        const storageKey = "activeUiTab";
+        const hashToTab = {
+          "#analyze": "analyze",
+          "#recurring": "recurring",
+          "#review": "review",
+          "#investments": "investments",
+          "#data": "data",
+          "#connect": "connect",
+        };
+
+        let recurringLoaded = false;
+
+        function activateTab(tab) {
+          const validTab = [
+            "analyze",
+            "recurring",
+            "review",
+            "investments",
+            "data",
+            "connect",
+          ].includes(tab)
+            ? tab
+            : "analyze";
+          localStorage.setItem(storageKey, validTab);
+          for (const btn of tabNav.querySelectorAll("button[data-tab-target]")) {
+            btn.classList.toggle("active", btn.dataset.tabTarget === validTab);
+          }
+          for (const section of document.querySelectorAll("section[data-tab-group]")) {
+            section.classList.toggle("tab-hidden", section.dataset.tabGroup !== validTab);
+          }
+          const hash = "#" + validTab;
+          if (window.location.hash !== hash) {
+            history.replaceState(null, "", hash);
+          }
+          if (validTab === "recurring" && !recurringLoaded) {
+            recurringLoaded = true;
+            if (typeof loadRecurring === "function") loadRecurring();
+          }
+        }
+
+        tabNav.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-tab-target]");
+          if (!button) return;
+          activateTab(button.dataset.tabTarget);
+        });
+
+        const fromHash = hashToTab[window.location.hash];
+        const stored = localStorage.getItem(storageKey);
+        activateTab(fromHash || stored || "analyze");
+      })();
+
+      const healthOutput = document.getElementById("health-output");
+      const providerSummary = document.getElementById("provider-summary");
+      const sessionSummary = document.getElementById("session-summary");
+      const savedItems = document.getElementById("saved-items");
+      const resultOutput = document.getElementById("result-output");
+      const resultSummary = document.getElementById("result-summary");
+      const resultItems = document.getElementById("result-items");
+      const connectButton = document.getElementById("connect-button");
+      const updateConsentButton = document.getElementById("update-consent-button");
+      const updateConsentItemSelect = document.getElementById("update-consent-item");
+      const refreshButton = document.getElementById("refresh-button");
+      const refetchHistoryButton = document.getElementById("refetch-history-button");
+      const resetButton = document.getElementById("reset-button");
+      let latestHealth = null;
+
+      function setBusy(button, busy) {
+        button.disabled = busy;
+      }
+
+      function render(target, value) {
+        target.textContent =
+          typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function formatDate(value) {
+        if (!value) {
+          return "Not yet";
+        }
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return value;
+        }
+
+        return date.toLocaleString();
+      }
+
+      function formatMoney(value, currencyCode = "USD") {
+        if (typeof value !== "number") {
+          return "N/A";
+        }
+
+        return new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: currencyCode || "USD",
+          maximumFractionDigits: 2,
+        }).format(value);
+      }
+
+      function formatPercent(value) {
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+          return "—";
+        }
+        return `${value.toFixed(1)}%`;
+      }
+
+      function renderStats(stats) {
+        return `
+          <div class="stat-grid">
+            ${stats
+              .map(
+                (stat) => `
+                  <div class="stat">
+                    <span class="stat-label">${escapeHtml(stat.label)}</span>
+                    <span class="stat-value">${escapeHtml(stat.value)}</span>
+                  </div>
+                `,
+              )
+              .join("")}
+          </div>
+        `;
+      }
+
+      function renderSessionItem(item) {
+        return `
+          <article class="item-card">
+            <div class="item-card-header">
+              <div>
+                <h3 class="item-card-title">${escapeHtml(
+                  item.institutionName || "Unknown institution",
+                )}</h3>
+                <div class="secondary-text">${escapeHtml(item.itemId)}</div>
+              </div>
+              <span class="pill ${item.cursorPresent ? "success" : "warn"}">
+                ${item.cursorPresent ? "Cursor saved" : "No cursor yet"}
+              </span>
+            </div>
+            ${renderStats([
+              { label: "Linked accounts", value: String(item.linkedAccountCount) },
+              { label: "Stored balances", value: String(item.accountCount || 0) },
+              { label: "Stored txns", value: String(item.transactionCount || 0) },
+              {
+                label: "Newest txn",
+                value: formatDate(item.newestTransactionDate),
+              },
+              {
+                label: "Oldest txn",
+                value: formatDate(item.oldestTransactionDate),
+              },
+              { label: "Created", value: formatDate(item.createdAt) },
+              { label: "Last refresh", value: formatDate(item.lastRefreshAt) },
+            ])}
+            <details>
+              <summary>Saved account snapshots</summary>
+              <div class="account-list">
+                ${
+                  Array.isArray(item.accounts) && item.accounts.length
+                    ? item.accounts.map(renderAccount).join("")
+                    : '<div class="secondary-text">No persisted account snapshot yet.</div>'
+                }
+              </div>
+            </details>
+            <details>
+              <summary>Saved transaction snapshot</summary>
+              <div class="transaction-list">
+                ${
+                  Array.isArray(item.recentTransactions) &&
+                  item.recentTransactions.length
+                    ? item.recentTransactions.map(renderTransactionSample).join("")
+                    : '<div class="secondary-text">No persisted transactions yet.</div>'
+                }
+              </div>
+            </details>
+          </article>
+        `;
+      }
+
+      function renderAccount(account) {
+        const currency = account.isoCurrencyCode || "USD";
+        return `
+          <div class="mini-card">
+            <strong>${escapeHtml(account.name || "Unnamed account")}</strong>
+            <div class="secondary-text">
+              ${escapeHtml(account.type || "unknown")} / ${escapeHtml(
+                account.subtype || "unknown",
+              )}${account.mask ? ` •••• ${escapeHtml(account.mask)}` : ""}
+            </div>
+            <div class="kv">
+              <div>
+                <dt>Current balance</dt>
+                <dd>${escapeHtml(formatMoney(account.current, currency))}</dd>
+              </div>
+              <div>
+                <dt>Available balance</dt>
+                <dd>${escapeHtml(formatMoney(account.available, currency))}</dd>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTransactionSample(transaction) {
+        const merchantName =
+          transaction.merchantName || transaction.merchant_name || null;
+        const currencyCode =
+          transaction.isoCurrencyCode ||
+          transaction.iso_currency_code ||
+          transaction.unofficialCurrencyCode ||
+          transaction.unofficial_currency_code ||
+          "USD";
+        const categoryLabel =
+          transaction.personalFinanceCategoryPrimary ||
+          transaction.personal_finance_category?.primary ||
+          (Array.isArray(transaction.category)
+            ? transaction.category.join(" / ")
+            : "Unknown");
+
+        return `
+          <div class="mini-card">
+            <strong>${escapeHtml(transaction.name || "Unnamed transaction")}</strong>
+            <div class="secondary-text">
+              ${escapeHtml(transaction.date || "Unknown date")}
+              ${merchantName ? ` • ${escapeHtml(merchantName)}` : ""}
+            </div>
+            <div class="kv">
+              <div>
+                <dt>Amount</dt>
+                <dd>${escapeHtml(
+                  formatMoney(
+                    typeof transaction.amount === "number" ? transaction.amount : null,
+                    currencyCode,
+                  ),
+                )}</dd>
+              </div>
+              <div>
+                <dt>Category</dt>
+                <dd>${escapeHtml(categoryLabel)}</dd>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function normalizeResultItems(result) {
+        if (!result || typeof result !== "object") {
+          return [];
+        }
+
+        if (Array.isArray(result.items)) {
+          return result.items;
+        }
+
+        if (result.itemId) {
+          return [result];
+        }
+
+        return [];
+      }
+
+      function renderHealthSummary(health) {
+        const provider = health.provider || {};
+        const sessions = health.sessions || { items: [], sessionCount: 0 };
+
+        providerSummary.innerHTML = `
+          <div class="item-card">
+            <div class="item-card-header">
+              <div>
+                <h3 class="item-card-title">${escapeHtml(
+                  provider.name || "Provider",
+                )}</h3>
+                <div class="secondary-text">
+                  Environment: ${escapeHtml(provider.environment || "unknown")}
+                </div>
+              </div>
+              <span class="pill ${provider.configured ? "success" : "warn"}">
+                ${provider.configured ? "Configured" : "Missing credentials"}
+              </span>
+            </div>
+            ${renderStats([
+              {
+                label: "Products",
+                value: Array.isArray(provider.products)
+                  ? provider.products.join(", ")
+                  : "Unknown",
+              },
+              {
+                label: "Country codes",
+                value: Array.isArray(provider.countryCodes)
+                  ? provider.countryCodes.join(", ")
+                  : "Unknown",
+              },
+              {
+                label: "Days requested",
+                value:
+                  typeof provider.daysRequested === "number"
+                    ? String(provider.daysRequested)
+                    : "Unknown",
+              },
+            ])}
+          </div>
+        `;
+
+        sessionSummary.innerHTML = `
+          <div class="item-card">
+            <h3 class="item-card-title">Saved validation state</h3>
+            ${renderStats([
+              { label: "Saved items", value: String(sessions.sessionCount || 0) },
+              {
+                label: "Has saved sessions",
+                value: sessions.hasSessions ? "Yes" : "No",
+              },
+            ])}
+          </div>
+        `;
+
+        savedItems.innerHTML =
+          Array.isArray(sessions.items) && sessions.items.length
+            ? sessions.items.map(renderSessionItem).join("")
+            : '<div class="secondary-text">No saved institutions yet. Connect your first institution through Plaid.</div>';
+      }
+
+      function renderResultSummary(result) {
+        const items = normalizeResultItems(result);
+        const warningBanner =
+          result && typeof result === "object" && result.warning
+            ? `<div class="banner warn">${escapeHtml(result.warning)}</div>`
+            : "";
+
+        if (!items.length) {
+          resultSummary.innerHTML =
+            warningBanner +
+            escapeHtml(typeof result === "string" ? result : "No result yet.");
+          resultItems.innerHTML = "";
+          return;
+        }
+
+        resultSummary.innerHTML =
+          warningBanner +
+          renderStats([
+            {
+              label: "Returned items",
+              value: String(items.length),
+            },
+            {
+              label: "Refreshed count",
+              value:
+                typeof result.refreshedCount === "number"
+                  ? String(result.refreshedCount)
+                  : items.length === 1
+                    ? "1"
+                    : "N/A",
+            },
+          ]);
+
+        resultItems.innerHTML = items
+          .map((item) => {
+            const linkedAccounts = Array.isArray(item.linkedAccounts)
+              ? item.linkedAccounts
+              : [];
+            const accounts = Array.isArray(item.accounts) ? item.accounts : [];
+            const transactionSample =
+              item.transactions && Array.isArray(item.transactions.sample)
+                ? item.transactions.sample
+                : [];
+
+            return `
+              <article class="item-card">
+                <div class="item-card-header">
+                  <div>
+                    <h3 class="item-card-title">${escapeHtml(
+                      item.institution?.name || "Connected institution",
+                    )}</h3>
+                    <div class="secondary-text">${escapeHtml(item.itemId || "Unknown item")}</div>
+                  </div>
+                  <span class="pill success">Data returned</span>
+                </div>
+                ${renderStats([
+                  {
+                    label: "Linked accounts",
+                    value: String(linkedAccounts.length),
+                  },
+                  {
+                    label: "Balances returned",
+                    value: String(accounts.length),
+                  },
+                  {
+                    label: "Txn delta",
+                    value: String(item.transactions?.addedCount ?? 0),
+                  },
+                  {
+                    label: "Stored txns",
+                    value: String(item.transactions?.totalCount ?? 0),
+                  },
+                  {
+                    label: "Newest txn",
+                    value: formatDate(item.transactions?.newestDate),
+                  },
+                  {
+                    label: "Oldest txn",
+                    value: formatDate(item.transactions?.oldestDate),
+                  },
+                  {
+                    label: "Last refresh",
+                    value: formatDate(item.lastRefreshAt),
+                  },
+                ])}
+                <div class="kv">
+                  <div>
+                    <dt>Institution ID</dt>
+                    <dd>${escapeHtml(item.institution?.id || "Unknown")}</dd>
+                  </div>
+                  <div>
+                    <dt>Modified / removed</dt>
+                    <dd>${escapeHtml(
+                      `${item.transactions?.modifiedCount ?? 0} / ${
+                        item.transactions?.removedCount ?? 0
+                      }`,
+                    )}</dd>
+                  </div>
+                  <div>
+                    <dt>Total stored transactions</dt>
+                    <dd>${escapeHtml(String(item.transactions?.totalCount ?? 0))}</dd>
+                  </div>
+                  <div>
+                    <dt>Historical window</dt>
+                    <dd>${escapeHtml(
+                      `${formatDate(item.transactions?.oldestDate)} to ${formatDate(
+                        item.transactions?.newestDate,
+                      )}`,
+                    )}</dd>
+                  </div>
+                  <div>
+                    <dt>Requested history</dt>
+                    <dd>${escapeHtml(
+                      item.transactions?.historicalRequest
+                        ? `${item.transactions.historicalRequest.startDate} to ${item.transactions.historicalRequest.endDate}`
+                        : "Current stored snapshot",
+                    )}</dd>
+                  </div>
+                </div>
+                <details open>
+                  <summary>Accounts</summary>
+                  <div class="account-list">
+                    ${
+                      accounts.length
+                        ? accounts.map(renderAccount).join("")
+                        : '<div class="secondary-text">No balance payload returned.</div>'
+                    }
+                  </div>
+                </details>
+                <details>
+                  <summary>Linked account metadata</summary>
+                  <div class="account-list">
+                    ${
+                      linkedAccounts.length
+                        ? linkedAccounts
+                            .map(
+                              (account) => `
+                                <div class="mini-card">
+                                  <strong>${escapeHtml(account.name || "Unnamed linked account")}</strong>
+                                  <div class="secondary-text">
+                                    ${escapeHtml(account.type || "unknown")} / ${escapeHtml(
+                                      account.subtype || "unknown",
+                                    )}${account.mask ? ` •••• ${escapeHtml(account.mask)}` : ""}
+                                  </div>
+                                </div>
+                              `,
+                            )
+                            .join("")
+                        : '<div class="secondary-text">No linked-account metadata returned.</div>'
+                    }
+                  </div>
+                </details>
+                <details>
+                  <summary>Sample transactions</summary>
+                  <div class="transaction-list">
+                    ${
+                      transactionSample.length
+                        ? transactionSample.map(renderTransactionSample).join("")
+                        : '<div class="secondary-text">No transactions are currently stored for this item.</div>'
+                    }
+                  </div>
+                </details>
+              </article>
+            `;
+          })
+          .join("");
+      }
+
+      async function request(path, options = {}) {
+        const response = await fetch(path, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          ...options,
+        });
+
+        const body = await response.json();
+        if (!response.ok) {
+          const error = new Error(body.error || "Request failed.");
+          error.payload = body;
+          throw error;
+        }
+
+        return body;
+      }
+
+      async function loadHealth() {
+        try {
+          const health = await request("/api/health", { method: "GET" });
+          latestHealth = health;
+          renderHealthSummary(health);
+          syncConsentItemOptions();
+          render(healthOutput, health);
+        } catch (error) {
+          providerSummary.innerHTML =
+            '<div class="secondary-text">Unable to load provider status.</div>';
+          sessionSummary.innerHTML =
+            '<div class="secondary-text">Unable to load session summary.</div>';
+          savedItems.innerHTML = "";
+          render(healthOutput, { error: error.message });
+        }
+      }
+
+      function getSavedItemCandidates() {
+        const items =
+          latestHealth &&
+          latestHealth.sessions &&
+          Array.isArray(latestHealth.sessions.items)
+            ? latestHealth.sessions.items
+            : [];
+        return items.map((item) => ({
+          itemId: item.itemId,
+          institutionName: item.institutionName || "Unknown institution",
+        }));
+      }
+
+      function syncConsentItemOptions() {
+        const candidates = getSavedItemCandidates();
+        const previousValue = updateConsentItemSelect.value || "";
+        updateConsentItemSelect.innerHTML = [
+          '<option value="">Auto-select when only one item exists</option>',
+          ...candidates.map((entry) => {
+            const label = `${entry.institutionName} (${entry.itemId})`;
+            return `<option value="${escapeHtml(entry.itemId)}">${escapeHtml(label)}</option>`;
+          }),
+        ].join("");
+
+        if (candidates.some((entry) => entry.itemId === previousValue)) {
+          updateConsentItemSelect.value = previousValue;
+        }
+      }
+
+      async function openPlaidConsentUpdate() {
+        setBusy(updateConsentButton, true);
+        try {
+          if (!latestHealth) {
+            await loadHealth();
+          }
+          const candidates = getSavedItemCandidates();
+          if (!candidates.length) {
+            throw new Error("No saved sessions found. Connect an account first.");
+          }
+          const selectedItemId = updateConsentItemSelect.value.trim();
+          const itemId =
+            selectedItemId ||
+            (candidates.length === 1 ? candidates[0].itemId : null);
+          if (!itemId) {
+            throw new Error(
+              "Select a consent update item from the dropdown when multiple saved items exist.",
+            );
+          }
+
+          const tokenResponse = await request("/api/plaid/create-update-link-token", {
+            method: "POST",
+            body: JSON.stringify({ itemId }),
+          });
+          const handler = Plaid.create({
+            token: tokenResponse.linkToken,
+            onSuccess: async () => {
+              try {
+                renderResultSummary({
+                  message:
+                    "Plaid consent updated. Investments are not fetched automatically; run Sync Plaid Investments when ready.",
+                  itemId: tokenResponse.itemId,
+                });
+                render(resultOutput, {
+                  message:
+                    "Plaid consent updated. Investments are not fetched automatically; run Sync Plaid Investments when ready.",
+                  itemId: tokenResponse.itemId,
+                });
+                await loadHealth();
+              } catch (error) {
+                renderResultSummary(error.payload || { error: error.message });
+                render(resultOutput, error.payload || { error: error.message });
+              } finally {
+                setBusy(updateConsentButton, false);
+              }
+            },
+            onExit: (error, metadata) => {
+              renderResultSummary({
+                message: "Plaid consent update flow exited.",
+                error: error ? error.display_message || error.error_message : null,
+                metadata,
+              });
+              render(resultOutput, {
+                message: "Plaid consent update flow exited.",
+                error: error ? error.display_message || error.error_message : null,
+                metadata,
+              });
+              setBusy(updateConsentButton, false);
+            },
+          });
+          handler.open();
+        } catch (error) {
+          renderResultSummary(error.payload || { error: error.message });
+          render(resultOutput, error.payload || { error: error.message });
+          setBusy(updateConsentButton, false);
+        }
+      }
+
+      async function openPlaidLink() {
+        setBusy(connectButton, true);
+        render(resultOutput, "Creating link token...");
+
+        try {
+          const { linkToken } = await request("/api/plaid/create-link-token", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+
+          const handler = Plaid.create({
+            token: linkToken,
+            onSuccess: async (publicToken, metadata) => {
+              render(
+                resultOutput,
+                "Exchanging public token and fetching data for the selected institution...",
+              );
+              try {
+                const result = await request("/api/plaid/exchange-public-token", {
+                  method: "POST",
+                  body: JSON.stringify({ publicToken, linkMetadata: metadata }),
+                });
+                renderResultSummary(result);
+                render(resultOutput, result);
+                await loadHealth();
+              } catch (error) {
+                renderResultSummary(error.payload || { error: error.message });
+                render(resultOutput, error.payload || { error: error.message });
+              } finally {
+                setBusy(connectButton, false);
+              }
+            },
+            onExit: (error, metadata) => {
+              const exitPayload = {
+                message: "Plaid Link exited.",
+                error: error ? error.display_message || error.error_message : null,
+                metadata,
+              };
+              renderResultSummary(exitPayload);
+              render(resultOutput, {
+                message: "Plaid Link exited.",
+                error: error ? error.display_message || error.error_message : null,
+                metadata,
+              });
+              setBusy(connectButton, false);
+            },
+          });
+
+          handler.open();
+        } catch (error) {
+          renderResultSummary({ error: error.message });
+          render(resultOutput, { error: error.message });
+          setBusy(connectButton, false);
+        }
+      }
+
+      async function refreshSession() {
+        setBusy(refreshButton, true);
+        try {
+          const result = await request("/api/plaid/refresh", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          renderResultSummary(result);
+          render(resultOutput, result);
+          await loadHealth();
+        } catch (error) {
+          renderResultSummary(error.payload || { error: error.message });
+          render(resultOutput, error.payload || { error: error.message });
+        } finally {
+          setBusy(refreshButton, false);
+        }
+      }
+
+      async function resetSession() {
+        setBusy(resetButton, true);
+        try {
+          const result = await request("/api/session/reset", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          renderResultSummary(result);
+          render(resultOutput, result);
+          await loadHealth();
+        } catch (error) {
+          renderResultSummary(error.payload || { error: error.message });
+          render(resultOutput, error.payload || { error: error.message });
+        } finally {
+          setBusy(resetButton, false);
+        }
+      }
+
+      async function refetchHistory() {
+        setBusy(refetchHistoryButton, true);
+        try {
+          const result = await request("/api/plaid/refetch-history", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          renderResultSummary(result);
+          render(resultOutput, result);
+          await loadHealth();
+        } catch (error) {
+          renderResultSummary(error.payload || { error: error.message });
+          render(resultOutput, error.payload || { error: error.message });
+        } finally {
+          setBusy(refetchHistoryButton, false);
+        }
+      }
+
+      const budgetFromInput = document.getElementById("briefing-from");
+      const budgetToInput = document.getElementById("briefing-to");
+      const budgetRefreshButton = document.getElementById("budget-refresh-button");
+      const budgetStatus = document.getElementById("budget-status");
+      const budgetLastUpdated = document.getElementById("budget-last-updated");
+      const budgetSummary = document.getElementById("budget-summary");
+      const budgetItems = document.getElementById("budget-items");
+
+      function setBudgetStatus(message, type = "info") {
+        budgetStatus.innerHTML = renderBanner(message, type);
+      }
+
+      function clearBudgetStatus() {
+        budgetStatus.innerHTML = "";
+      }
+
+      function renderBudgetIssues(issues) {
+        if (!Array.isArray(issues) || !issues.length) {
+          return "";
+        }
+        return `
+          <div class="banner warn">
+            <strong>Budget definition issues:</strong>
+            <ul>
+              ${issues
+                .map(
+                  (issue) =>
+                    `<li>${escapeHtml(issue.path || "budgets.yml")}: ${escapeHtml(issue.message || "Unknown issue")}</li>`,
+                )
+                .join("")}
+            </ul>
+          </div>
+        `;
+      }
+
+      function formatVariance(value) {
+        const prefix = value > 0 ? "+" : "";
+        return prefix + formatMoney(value);
+      }
+
+      function renderBudgetReview(data) {
+        if (!data) {
+          budgetSummary.innerHTML = "";
+          budgetItems.innerHTML = '<div class="secondary-text">No budget data yet.</div>';
+          budgetLastUpdated.textContent = "";
+          return;
+        }
+
+        if (!budgetFromInput.value && data.from) {
+          budgetFromInput.value = data.from;
+        }
+        if (!budgetToInput.value && data.to) {
+          budgetToInput.value = data.to;
+        }
+
+        if (data.validation && data.validation.valid === false) {
+          budgetSummary.innerHTML = "";
+          budgetItems.innerHTML =
+            '<div class="secondary-text">Fix budget file issues before review metrics can be computed.</div>';
+          budgetStatus.innerHTML = renderBudgetIssues(data.validation.issues || []);
+          budgetLastUpdated.textContent = `Refresh attempted ${new Date().toLocaleTimeString()} (${data.from} to ${data.to}).`;
+          return;
+        }
+
+        budgetStatus.innerHTML = renderBudgetIssues(data.validation?.issues || []);
+        budgetSummary.innerHTML = renderStats([
+          { label: "Expected budget", value: formatMoney(data.totals?.totalExpected || 0) },
+          { label: "Actual spend", value: formatMoney(data.totals?.totalActual || 0) },
+          { label: "Over categories", value: String(data.totals?.overCategories || 0) },
+          { label: "On/under track", value: String(data.totals?.onTrackCategories || 0) },
+        ]);
+
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (!items.length) {
+          budgetItems.innerHTML = '<div class="secondary-text">No budget targets defined yet.</div>';
+          return;
+        }
+
+        budgetItems.innerHTML = `
+          <div class="budget-row header">
+            <div>Category</div>
+            <div>Expected</div>
+            <div>Actual</div>
+            <div>Variance</div>
+            <div>Progress</div>
+          </div>
+          ${items
+            .map(
+              (item) => `
+                <div class="budget-row">
+                  <div><strong>${escapeHtml(item.category)}</strong></div>
+                  <div>${escapeHtml(formatMoney(item.expected))}</div>
+                  <div>${escapeHtml(formatMoney(item.actual))}</div>
+                  <div>${escapeHtml(formatVariance(item.variance))}</div>
+                  <div>
+                    <span class="budget-status ${escapeHtml(item.status)}">
+                      ${escapeHtml(String(item.progressPct))}%
+                    </span>
+                  </div>
+                </div>
+              `,
+            )
+            .join("")}
+        `;
+        budgetLastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()} for ${data.from} to ${data.to}.`;
+      }
+
+      async function loadBudgetReview() {
+        setBusy(budgetRefreshButton, true);
+        const startedAt = Date.now();
+        budgetLastUpdated.textContent = "Refreshing budget review...";
+        try {
+          const from = budgetFromInput.value || null;
+          const to = budgetToInput.value || null;
+          const params = new URLSearchParams();
+          if (from) params.set("from", from);
+          if (to) params.set("to", to);
+          const query = params.toString() ? `?${params.toString()}` : "";
+          const data = await request(`/api/budgets/review${query}`, { method: "GET" });
+          const elapsed = Date.now() - startedAt;
+          if (elapsed < 450) {
+            await new Promise((resolve) => setTimeout(resolve, 450 - elapsed));
+          }
+          renderBudgetReview(data);
+        } catch (error) {
+          budgetSummary.innerHTML = "";
+          budgetItems.innerHTML = "";
+          setBudgetStatus(error.message || "Failed to load budget review.", "warn");
+          budgetLastUpdated.textContent = `Refresh failed ${new Date().toLocaleTimeString()}.`;
+        } finally {
+          setBusy(budgetRefreshButton, false);
+        }
+      }
+
+      const exportFromInput = document.getElementById("export-from");
+      const exportToInput = document.getElementById("export-to");
+      const exportResult = document.getElementById("export-result");
+      const exportButtons = document.querySelectorAll(".export-button");
+      const investmentInstitutionInput = document.getElementById("investment-institution");
+      const investmentFileInput = document.getElementById("investment-file");
+      const investmentImportButton = document.getElementById("investment-import-button");
+      const investmentSyncPlaidButton = document.getElementById("investment-sync-plaid-button");
+      const investmentNormalizeButton = document.getElementById("investment-normalize-button");
+      const investmentRefreshSummaryButton = document.getElementById("investment-refresh-summary-button");
+      const investmentDataStatus = document.getElementById("investment-data-status");
+      const investmentConnectStatus = document.getElementById("investment-connect-status");
+      const investmentAccountSelect = document.getElementById("investment-account-select");
+      const investmentAccountClassification = document.getElementById("investment-account-classification");
+      const investmentAccountClassificationSaveButton = document.getElementById("investment-account-classification-save-button");
+      const investmentStatus = document.getElementById("investment-status");
+      const investmentSummary = document.getElementById("investment-summary");
+      const investmentUsefulViews = document.getElementById("investment-useful-views");
+      let investmentAccountsIndex = new Map();
+
+      async function runExport(exportType) {
+        const fromVal = exportFromInput.value || null;
+        const toVal = exportToInput.value || null;
+
+        for (const btn of exportButtons) btn.disabled = true;
+        exportResult.textContent = `Generating ${exportType}...`;
+
+        try {
+          const result = await request("/api/export", {
+            method: "POST",
+            body: JSON.stringify({ type: exportType, from: fromVal, to: toVal }),
+          });
+          exportResult.innerHTML = `
+            <div class="banner">
+              <strong>${escapeHtml(result.type)}</strong> exported
+              <strong>${escapeHtml(String(result.rowCount))}</strong> rows
+              ${result.from || result.to ? `(${escapeHtml(result.from || "...")} to ${escapeHtml(result.to || "...")})` : ""}
+              <br /><span class="secondary-text">${escapeHtml(result.filePath)}</span>
+            </div>
+          `;
+        } catch (error) {
+          exportResult.innerHTML = `
+            <div class="banner warn">${escapeHtml(error.message || "Export failed.")}</div>
+          `;
+        } finally {
+          for (const btn of exportButtons) btn.disabled = false;
+        }
+      }
+
+      for (const btn of exportButtons) {
+        btn.addEventListener("click", () => runExport(btn.dataset.type));
+      }
+
+      function renderInvestmentSummary(data) {
+        if (!data || !data.totals) {
+          investmentSummary.innerHTML = '<div class="secondary-text">No investment data yet.</div>';
+          return;
+        }
+        const totalInvestmentValue = data.totals.totalInvestmentValue || 0;
+        const institutionsRows = (data.holdingsByInstitution || [])
+          .map((entry) => `
+            <tr>
+              <td>${escapeHtml(entry.institution || "Unknown institution")}</td>
+              <td class="mono">${formatMoney(entry.value || 0)}</td>
+              <td class="mono">${formatPercent(totalInvestmentValue ? ((entry.value || 0) / totalInvestmentValue) * 100 : 0)}</td>
+            </tr>
+          `)
+          .join("");
+        const allSecurities = Array.isArray(data.topSecurities) ? data.topSecurities : [];
+        const summaryHoldingsLimit = 25;
+        const summarySecurities = allSecurities.slice(0, summaryHoldingsLimit);
+        const summarySecuritiesRows = summarySecurities
+          .map((security) => `
+            <tr>
+              <td>${escapeHtml(security.ticker || "—")}</td>
+              <td class="truncate">${escapeHtml(security.name || "Unknown security")}</td>
+              <td class="mono">${escapeHtml(String(security.quantity || 0))}</td>
+              <td class="mono">${formatMoney(security.value || 0)}</td>
+              <td class="mono">${formatPercent(totalInvestmentValue ? ((security.value || 0) / totalInvestmentValue) * 100 : 0)}</td>
+            </tr>
+          `)
+          .join("");
+        const sourceRows = (data.holdingsBySource || [])
+          .map((entry) => `
+            <tr>
+              <td>${escapeHtml(entry.source)}</td>
+              <td class="mono">${formatMoney(entry.value || 0)}</td>
+              <td class="mono">${formatPercent(totalInvestmentValue ? ((entry.value || 0) / totalInvestmentValue) * 100 : 0)}</td>
+            </tr>
+          `)
+          .join("");
+
+        investmentSummary.innerHTML = `
+          <div class="mini-card">
+            <strong>Total investment value: ${formatMoney(data.totals.totalInvestmentValue || 0)}</strong>
+            <div class="secondary-text">
+              Accounts: ${escapeHtml(String(data.totals.accountCount || 0))} &bull;
+              Holdings: ${escapeHtml(String(data.totals.holdingCount || 0))} &bull;
+              Securities: ${escapeHtml(String(data.totals.securityCount || 0))} &bull;
+              Latest snapshot: ${escapeHtml(data.totals.latestSnapshotDate || "unknown")}
+            </div>
+          </div>
+          <div class="mini-card">
+            <strong>By Source</strong>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Source</th><th class="mono">Value</th><th class="mono">% of Total</th></tr></thead>
+              <tbody>${sourceRows || '<tr><td colspan="3" class="secondary-text">No source breakdown yet.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="mini-card">
+            <strong>By institution</strong>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Institution</th><th class="mono">Value</th><th class="mono">% of Total</th></tr></thead>
+              <tbody>${institutionsRows || '<tr><td colspan="3" class="secondary-text">No institutions loaded.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="mini-card">
+            <strong>Summary holdings (top by value)</strong>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Ticker</th><th>Security</th><th class="mono">Qty</th><th class="mono">Value</th><th class="mono">% of Total</th></tr></thead>
+              <tbody>${summarySecuritiesRows || '<tr><td colspan="5" class="secondary-text">No security holdings to show.</td></tr>'}</tbody>
+            </table>
+            <div class="secondary-text" style="margin-top: 6px;">
+              Showing top ${escapeHtml(String(summarySecurities.length))} of ${escapeHtml(String(allSecurities.length))} total consolidated holdings. See "Holdings detail (consolidated)" below for full coverage.
+            </div>
+          </div>
+        `;
+      }
+
+      function freshnessBadge(freshness, daysOld) {
+        if (freshness === "fresh") return `fresh (${daysOld}d old)`;
+        if (freshness === "aging") return `aging (${daysOld}d old)`;
+        return `stale (${daysOld}d old)`;
+      }
+
+      function renderInvestmentUsefulViews(data) {
+        if (!data || !data.snapshot || !data.holdingsDetail || !data.activity || !data.diagnostics) {
+          investmentUsefulViews.innerHTML = "";
+          return;
+        }
+        const consolidatedTotal = (data.holdingsDetail.consolidated || [])
+          .reduce((sum, row) => sum + (row.totalValue || 0), 0);
+        const freshnessRows = (data.snapshot.latestBySource || [])
+          .map((row) => `
+            <tr>
+              <td>${escapeHtml(row.source)}</td>
+              <td>${escapeHtml(row.snapshotDate)}</td>
+              <td>${escapeHtml(freshnessBadge(row.freshness, row.daysOld))}</td>
+            </tr>
+          `)
+          .join("");
+        const distinctDates = Array.isArray(data.snapshot.distinctSnapshotDates)
+          ? data.snapshot.distinctSnapshotDates.join(", ")
+          : "";
+
+        const consolidatedRows = (data.holdingsDetail.consolidated || [])
+          .map((row) => `
+            <tr>
+              <td class="truncate">${escapeHtml(row.canonicalSecurityLabel || row.canonicalSecurityKey)}</td>
+              <td class="truncate">${escapeHtml(row.canonicalSecurityKey)}</td>
+              <td>${escapeHtml(row.canonicalMatchConfidence)} (${escapeHtml(row.canonicalMatchMethod)})</td>
+              <td class="mono">${escapeHtml(String(row.accountCount || 0))}</td>
+              <td class="mono">${escapeHtml(String(row.rowCount || 0))}</td>
+              <td class="mono">${formatMoney(row.totalValue || 0)}</td>
+              <td class="mono">${formatPercent(consolidatedTotal ? ((row.totalValue || 0) / consolidatedTotal) * 100 : 0)}</td>
+              <td>${row.potentialDuplicateExposure ? "yes" : "no"}</td>
+            </tr>
+          `)
+          .join("");
+
+        const drilldownRows = (data.holdingsDetail.consolidated || [])
+          .flatMap((row) => (row.drilldown || []).map((d) => ({ d, key: row.canonicalSecurityKey, label: row.canonicalSecurityLabel })))
+          .sort((left, right) => (right.d.currentValue || 0) - (left.d.currentValue || 0))
+          .map((entry) => `
+            <tr>
+              <td class="truncate">${escapeHtml(entry.label || entry.key)}</td>
+              <td>${escapeHtml(entry.d.institutionName || "Unknown institution")}</td>
+              <td class="truncate">${escapeHtml(entry.d.accountName || entry.d.accountId)}</td>
+              <td>${escapeHtml(entry.d.accountClassification || "unknown")}</td>
+              <td class="mono">${escapeHtml(String(entry.d.quantity || 0))}</td>
+              <td class="mono">${formatMoney(entry.d.currentValue || 0)}</td>
+              <td class="mono">${formatPercent(consolidatedTotal ? ((entry.d.currentValue || 0) / consolidatedTotal) * 100 : 0)}</td>
+            </tr>
+          `)
+          .join("");
+
+        const activityRows = (data.activity.recent || [])
+          .slice(0, 20)
+          .map((row) => `
+            <tr>
+              <td>${escapeHtml(row.date || "unknown date")}</td>
+              <td>${escapeHtml(row.institutionName || row.source)}</td>
+              <td class="truncate">${escapeHtml(row.securityName || row.ticker || "Unknown security")}</td>
+              <td>${escapeHtml(row.type || "—")}</td>
+              <td class="mono">${row.amount === null ? "—" : formatMoney(row.amount || 0)}</td>
+              <td class="mono">${row.quantity === null ? "—" : escapeHtml(String(row.quantity))}</td>
+            </tr>
+          `)
+          .join("");
+
+        const diagnostics = data.diagnostics || {};
+        const lowConfidenceRows = (diagnostics.lowConfidenceRows || [])
+          .slice(0, 15)
+          .map((row) => `
+            <tr>
+              <td class="truncate">${escapeHtml(row.canonicalSecurityLabel || row.canonicalSecurityKey)}</td>
+              <td>${escapeHtml(row.source || "unknown")}</td>
+              <td class="truncate">${escapeHtml(row.institutionName || "Unknown institution")}</td>
+              <td class="truncate">${escapeHtml(row.accountName || "Unknown account")}</td>
+              <td>${escapeHtml(row.canonicalMatchMethod || "unknown")}</td>
+              <td>${escapeHtml(row.snapshotAt || "unknown")}</td>
+            </tr>
+          `)
+          .join("");
+        const accountRows = [];
+        const accountById = new Map();
+        for (const consolidated of data.holdingsDetail.consolidated || []) {
+          for (const row of consolidated.drilldown || []) {
+            if (accountById.has(row.accountId)) continue;
+            accountById.set(row.accountId, {
+              accountId: row.accountId,
+              institutionName: row.institutionName || "Unknown institution",
+              accountName: row.accountName || row.accountId,
+              accountMask: row.accountMask || "",
+              classification: row.accountClassification || "unknown",
+            });
+          }
+        }
+        for (const account of accountById.values()) {
+          accountRows.push(account);
+        }
+        accountRows.sort((left, right) => {
+          const leftLabel = `${left.institutionName} ${left.accountName}`.toLowerCase();
+          const rightLabel = `${right.institutionName} ${right.accountName}`.toLowerCase();
+          return leftLabel.localeCompare(rightLabel);
+        });
+        investmentAccountsIndex = new Map(accountRows.map((row) => [row.accountId, row]));
+        const previousValue = investmentAccountSelect.value || "";
+        investmentAccountSelect.innerHTML = [
+          '<option value="">Select account</option>',
+          ...accountRows.map((row) => {
+            const maskSuffix = row.accountMask ? ` •••${row.accountMask}` : "";
+            const label = `${row.institutionName} / ${row.accountName}${maskSuffix} (${row.classification})`;
+            return `<option value="${escapeHtml(row.accountId)}">${escapeHtml(label)}</option>`;
+          }),
+        ].join("");
+        if (investmentAccountsIndex.has(previousValue)) {
+          investmentAccountSelect.value = previousValue;
+          investmentAccountClassification.value =
+            investmentAccountsIndex.get(previousValue).classification || "unknown";
+        } else if (accountRows.length > 0) {
+          investmentAccountSelect.value = accountRows[0].accountId;
+          investmentAccountClassification.value = accountRows[0].classification || "unknown";
+        }
+
+        investmentUsefulViews.innerHTML = `
+          <div class="mini-card">
+            <strong>Holdings detail (consolidated)</strong>
+            <div class="secondary-text" style="margin-top:4px;">
+              Showing all consolidated rows; ${escapeHtml(String(data.holdingsDetail.rowCount || 0))} latest line items in normalized state.
+            </div>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Security</th><th>Canonical Key</th><th>Match</th><th class="mono">Accounts</th><th class="mono">Rows</th><th class="mono">Total Value</th><th class="mono">% of Total</th><th>Overlap</th></tr></thead>
+              <tbody>${consolidatedRows || '<tr><td colspan="8" class="secondary-text">No consolidated holdings to show.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="mini-card">
+            <strong>Account-level drill-down</strong>
+            <div class="secondary-text" style="margin-top:4px;">
+              Showing all latest account/security line items.
+            </div>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Security</th><th>Institution</th><th>Account</th><th>Classification</th><th class="mono">Qty</th><th class="mono">Value</th><th class="mono">% of Total</th></tr></thead>
+              <tbody>${drilldownRows || '<tr><td colspan="7" class="secondary-text">No drill-down rows to show.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="mini-card">
+            <strong>Investment activity (recent)</strong>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Date</th><th>Institution</th><th>Security</th><th>Type</th><th class="mono">Amount</th><th class="mono">Qty</th></tr></thead>
+              <tbody>${activityRows || `<tr><td colspan="6" class="secondary-text">${escapeHtml(data.activity.emptyState || "No activity yet.")}</td></tr>`}</tbody>
+            </table>
+          </div>
+          <div class="mini-card">
+            <strong>Normalization diagnostics</strong>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Metric</th><th class="mono">Count</th></tr></thead>
+              <tbody>
+                <tr><td>Overlap-flagged rows</td><td class="mono">${escapeHtml(String(diagnostics.overlapCount || 0))}</td></tr>
+                <tr><td>Missing cost basis rows</td><td class="mono">${escapeHtml(String(diagnostics.missingCostBasisCount || 0))}</td></tr>
+                <tr><td>Low-confidence identity rows</td><td class="mono">${escapeHtml(String(diagnostics.unmatchedIdentityCount || 0))}</td></tr>
+              </tbody>
+            </table>
+            <div class="secondary-text" style="margin-top: 8px;">Low-confidence identity samples</div>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Security</th><th>Source</th><th>Institution</th><th>Account</th><th>Match Method</th><th>Snapshot</th></tr></thead>
+              <tbody>${lowConfidenceRows || '<tr><td colspan="6" class="secondary-text">No low-confidence rows detected.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="mini-card">
+            <strong>Data freshness by source</strong>
+            <table class="data-table" style="margin-top: 8px;">
+              <thead><tr><th>Source</th><th>Snapshot Date</th><th>Freshness</th></tr></thead>
+              <tbody>${freshnessRows || '<tr><td colspan="3" class="secondary-text">No source freshness data yet.</td></tr>'}</tbody>
+            </table>
+            <div class="secondary-text" style="margin-top:6px;">
+              Snapshot dates seen: ${escapeHtml(distinctDates || "none")}
+            </div>
+          </div>
+        `;
+      }
+
+      async function loadInvestmentUsefulViews() {
+        try {
+          const data = await request("/api/investments/useful-views", { method: "GET" });
+          renderInvestmentUsefulViews(data);
+        } catch (_error) {
+          investmentUsefulViews.innerHTML = '<div class="secondary-text">Useful-first investment views unavailable.</div>';
+        }
+      }
+
+      async function saveInvestmentAccountClassification() {
+        const accountId = investmentAccountSelect.value;
+        const classification = investmentAccountClassification.value;
+        if (!accountId) {
+          investmentStatus.innerHTML = '<div class="banner warn">Select an account first.</div>';
+          return;
+        }
+        setBusy(investmentAccountClassificationSaveButton, true);
+        investmentStatus.innerHTML = '<div class="banner">Saving account classification...</div>';
+        try {
+          await request("/api/investments/account-classification", {
+            method: "POST",
+            body: JSON.stringify({
+              accountId,
+              classification,
+            }),
+          });
+          investmentStatus.innerHTML = `<div class="banner">Saved classification <strong>${escapeHtml(classification)}</strong> for selected account.</div>`;
+          await loadInvestmentSummary();
+        } catch (error) {
+          investmentStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Failed to save account classification.")}</div>`;
+        } finally {
+          setBusy(investmentAccountClassificationSaveButton, false);
+        }
+      }
+
+      async function loadInvestmentSummary() {
+        setBusy(investmentRefreshSummaryButton, true);
+        try {
+          const data = await request("/api/investments/portfolio-summary", { method: "GET" });
+          renderInvestmentSummary(data);
+          await loadInvestmentUsefulViews();
+          investmentStatus.innerHTML = "";
+        } catch (error) {
+          investmentSummary.innerHTML = "";
+          investmentStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Failed to load portfolio summary.")}</div>`;
+        } finally {
+          setBusy(investmentRefreshSummaryButton, false);
+        }
+      }
+
+      async function importInvestmentCsv() {
+        const file = investmentFileInput.files && investmentFileInput.files[0]
+          ? investmentFileInput.files[0]
+          : null;
+        if (!file) {
+          investmentDataStatus.innerHTML = '<div class="banner warn">Select a CSV/TSV holdings file first.</div>';
+          return;
+        }
+
+        setBusy(investmentImportButton, true);
+        investmentDataStatus.innerHTML = '<div class="banner">Importing holdings...</div>';
+        try {
+          const content = await file.text();
+          const result = await request("/api/investments/csv/import", {
+            method: "POST",
+            body: JSON.stringify({
+              content,
+              institutionName: investmentInstitutionInput.value.trim() || undefined,
+            }),
+          });
+          const warningCount = Array.isArray(result.warnings) ? result.warnings.length : 0;
+          const normalizedCount = result.normalization && typeof result.normalization.rowCount === "number"
+            ? result.normalization.rowCount
+            : null;
+          investmentDataStatus.innerHTML = `<div class="banner">Imported ${escapeHtml(String(result.importedHoldings || 0))} holdings${warningCount ? ` with ${escapeHtml(String(warningCount))} warnings` : ""}${normalizedCount !== null ? `. Normalized master list rebuilt (${escapeHtml(String(normalizedCount))} rows).` : ""}</div>`;
+          renderInvestmentSummary(result.summary);
+          await loadInvestmentUsefulViews();
+        } catch (error) {
+          investmentDataStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Investment CSV import failed.")}</div>`;
+        } finally {
+          setBusy(investmentImportButton, false);
+        }
+      }
+
+      async function syncPlaidInvestments() {
+        setBusy(investmentSyncPlaidButton, true);
+        investmentConnectStatus.innerHTML = '<div class="banner">Syncing Plaid investments...</div>';
+        try {
+          const result = await request("/api/investments/plaid/sync", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          const normalizedCount = result.normalization && typeof result.normalization.rowCount === "number"
+            ? result.normalization.rowCount
+            : null;
+          investmentConnectStatus.innerHTML = `<div class="banner">Synced investments for ${escapeHtml(String(result.syncedCount || 0))} item(s)${normalizedCount !== null ? ` and rebuilt normalized master list (${escapeHtml(String(normalizedCount))} rows)` : ""}.</div>`;
+          renderInvestmentSummary(result.summary);
+          await loadInvestmentUsefulViews();
+        } catch (error) {
+          if (error.payload && error.payload.code === "ADDITIONAL_CONSENT_REQUIRED") {
+            const affected = Array.isArray(error.payload.items)
+              ? error.payload.items.map((item) => item.itemId).join(", ")
+              : "unknown item";
+            investmentConnectStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Additional Plaid consent required.")} Affected: ${escapeHtml(affected)}. Use "Update Plaid consent" in the Connect tab, then retry sync.</div>`;
+          } else {
+            investmentConnectStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Plaid investment sync failed.")}</div>`;
+          }
+        } finally {
+          setBusy(investmentSyncPlaidButton, false);
+        }
+      }
+
+      async function normalizeInvestmentMasterList() {
+        setBusy(investmentNormalizeButton, true);
+        investmentDataStatus.innerHTML = '<div class="banner">Rebuilding normalized master list...</div>';
+        try {
+          const result = await request("/api/investments/normalize", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          investmentDataStatus.innerHTML = `<div class="banner">Normalized master list rebuilt: ${escapeHtml(String(result.rowCount || 0))} rows, ${escapeHtml(String(result.overlapCount || 0))} overlap-flagged rows.</div>`;
+          await loadInvestmentUsefulViews();
+        } catch (error) {
+          investmentDataStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Normalization rebuild failed.")}</div>`;
+        } finally {
+          setBusy(investmentNormalizeButton, false);
+        }
+      }
+
+      investmentImportButton.addEventListener("click", importInvestmentCsv);
+      investmentSyncPlaidButton.addEventListener("click", syncPlaidInvestments);
+      investmentNormalizeButton.addEventListener("click", normalizeInvestmentMasterList);
+      investmentRefreshSummaryButton.addEventListener("click", loadInvestmentSummary);
+      investmentAccountClassificationSaveButton.addEventListener("click", saveInvestmentAccountClassification);
+      investmentAccountSelect.addEventListener("change", () => {
+        const selected = investmentAccountsIndex.get(investmentAccountSelect.value);
+        if (selected) {
+          investmentAccountClassification.value = selected.classification || "unknown";
+        }
+      });
+
+      connectButton.addEventListener("click", openPlaidLink);
+      updateConsentButton.addEventListener("click", openPlaidConsentUpdate);
+      refreshButton.addEventListener("click", refreshSession);
+      refetchHistoryButton.addEventListener("click", refetchHistory);
+      resetButton.addEventListener("click", resetSession);
+      budgetRefreshButton.addEventListener("click", loadBudgetReview);
+
+      // -----------------------------------------------------------------------
+      // Recurring Transactions (BL09)
+      // -----------------------------------------------------------------------
+
+      const recurringRefreshButton = document.getElementById("recurring-refresh-button");
+      const recurringExportButton = document.getElementById("recurring-export-button");
+      const recurringStatus = document.getElementById("recurring-status");
+      const recurringSummary = document.getElementById("recurring-summary");
+      const recurringOutflows = document.getElementById("recurring-outflows");
+      const recurringInflows = document.getElementById("recurring-inflows");
+      const recurringFromInput = document.getElementById("recurring-from");
+      const recurringToInput = document.getElementById("recurring-to");
+
+      // Default: last 6 months
+      (function initRecurringDates() {
+        const now = new Date();
+        const to = now.toISOString().slice(0, 10);
+        const from = new Date(now);
+        from.setMonth(from.getMonth() - 6);
+        recurringFromInput.value = from.toISOString().slice(0, 10);
+        recurringToInput.value = to;
+      })();
+
+      let lastRecurringFrom = "";
+      let lastRecurringTo = "";
+
+      function renderExpandPanel(s) {
+        const cat = [s.categoryPrimary, s.categoryDetailed].filter(Boolean).join(" / ").replace(/_/g, " ");
+        const deltaAmt = s.windowAvgAmount && s.averageAmount
+          ? (s.windowAvgAmount - s.averageAmount)
+          : null;
+        const deltaPct = deltaAmt != null && s.averageAmount
+          ? ((deltaAmt / s.averageAmount) * 100).toFixed(1)
+          : null;
+        const deltaStr = deltaAmt != null
+          ? `${deltaAmt >= 0 ? "+" : ""}${formatMoney(deltaAmt)} (${deltaPct}%)`
+          : "—";
+
+        return `<div class="expand-panel"><div class="detail-sections">
+          <details open>
+            <summary>Historical Summary</summary>
+            <div class="detail-body">
+              <dl class="kv-grid">
+                <dt>All-time avg</dt><dd>${formatMoney(Math.abs(s.averageAmount))}</dd>
+                <dt>All-time count</dt><dd>${s.transactionCount}</dd>
+                <dt>First seen</dt><dd>${escapeHtml(s.firstDate)}</dd>
+                <dt>Last seen</dt><dd>${escapeHtml(s.lastDate)}</dd>
+                <dt>Median interval</dt><dd>${s.medianIntervalDays} days</dd>
+                <dt>Category</dt><dd>${escapeHtml(cat) || "—"}</dd>
+                <dt>Window vs all-time avg</dt><dd>${deltaStr}</dd>
+              </dl>
+            </div>
+          </details>
+          <details data-txn-section="window" data-stream-key="${escapeHtml(s.streamKey)}">
+            <summary>Window Transactions</summary>
+            <div class="detail-body"><span class="secondary-text">Click to load...</span></div>
+          </details>
+          <details data-txn-section="all" data-stream-key="${escapeHtml(s.streamKey)}">
+            <summary>All Transactions</summary>
+            <div class="detail-body"><span class="secondary-text">Click to load...</span></div>
+          </details>
+        </div></div>`;
+      }
+
+      function renderTxnSubTable(transactions) {
+        if (!transactions || transactions.length === 0) {
+          return `<span class="secondary-text">No transactions found.</span>`;
+        }
+        const rows = transactions.map((t) => `<tr>
+          <td>${escapeHtml(t.date ?? "")}</td>
+          <td>${escapeHtml(t.merchant_name || t.name)}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${formatMoney(t.amount)}</td>
+          <td class="secondary-text">${escapeHtml(t.institution || "")}</td>
+        </tr>`).join("");
+        return `<table class="sub-table">
+          <thead><tr><th>Date</th><th>Name</th><th>Amount</th><th>Institution</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      }
+
+      function renderUnifiedTable(streams, title) {
+        if (!streams || streams.length === 0) {
+          return `<div class="secondary-text">No ${title.toLowerCase()} detected.</div>`;
+        }
+
+        const sorted = streams.slice().sort((a, b) => {
+          if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+          const aTotal = Math.abs(a.windowAvgAmount || a.averageAmount || 0) * (a.windowTxnCount || 1);
+          const bTotal = Math.abs(b.windowAvgAmount || b.averageAmount || 0) * (b.windowTxnCount || 1);
+          return bTotal - aTotal;
+        });
+
+        const rows = sorted.map((s, idx) => {
+          const avg = Math.abs(s.windowAvgAmount > 0 ? s.windowAvgAmount : s.averageAmount);
+          const avgAmt = formatMoney(avg, "USD");
+          const totalAmt = s.windowTxnCount > 0 ? formatMoney(avg * s.windowTxnCount, "USD") : "—";
+          const cat = [s.categoryPrimary, s.categoryDetailed].filter(Boolean).join(" / ").replace(/_/g, " ").toLowerCase();
+          const freq = (s.frequency || "").replace(/_/g, " ").toLowerCase();
+          const typePill = s.streamType === "recurring"
+            ? `<span class="pill pill-green">Recurring</span>`
+            : `<span class="pill pill-blue">Frequent</span>`;
+          const statusClass = s.isActive ? "pill-green" : "pill-muted";
+          const statusLabel = s.isActive ? "Active" : "Inactive";
+          const rowId = `stream-${title.replace(/\s/g, "")}-${idx}`;
+          return `<tr class="expandable" data-expand-target="${rowId}">
+              <td class="truncate" title="${escapeHtml(s.merchantName || s.name)}">${escapeHtml(s.merchantName || s.name)}</td>
+              <td class="truncate secondary-text" title="${escapeHtml(cat)}">${escapeHtml(cat) || "—"}</td>
+              <td>${typePill}</td>
+              <td class="mono">${avgAmt}</td>
+              <td class="mono">${totalAmt}</td>
+              <td class="mono">${s.windowTxnCount}</td>
+              <td>${freq}</td>
+              <td><span class="pill ${statusClass}">${statusLabel}</span></td>
+            </tr>
+            <tr class="expand-row" id="${rowId}" style="display:none;">
+              <td colspan="8">${renderExpandPanel(s)}</td>
+            </tr>`;
+        }).join("");
+
+        return `<h3 style="margin: 0 0 8px;">${escapeHtml(title)}</h3>
+        <div style="overflow-x:auto;">
+          <table class="data-table" style="table-layout:fixed; width:100%;">
+            <colgroup>
+              <col style="width:20%">
+              <col style="width:14%">
+              <col style="width:10%">
+              <col style="width:11%">
+              <col style="width:13%">
+              <col style="width:8%">
+              <col style="width:12%">
+              <col style="width:12%">
+            </colgroup>
+            <thead><tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Avg Amount</th>
+              <th>Total (Window)</th>
+              <th># in Win</th>
+              <th>Frequency</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }
+
+      function attachExpandListeners(container) {
+        container.querySelectorAll("tr.expandable").forEach((tr) => {
+          tr.addEventListener("click", () => {
+            const targetId = tr.dataset.expandTarget;
+            const expandRow = document.getElementById(targetId);
+            if (!expandRow) return;
+            const isVisible = expandRow.style.display !== "none";
+            expandRow.style.display = isVisible ? "none" : "table-row";
+          });
+        });
+
+        const txnCache = {};
+        container.querySelectorAll("details[data-txn-section]").forEach((det) => {
+          det.addEventListener("toggle", async () => {
+            if (!det.open) return;
+            const section = det.dataset.txnSection;
+            const streamKey = det.dataset.streamKey;
+            const cacheKey = `${streamKey}::${section}`;
+            const body = det.querySelector(".detail-body");
+            if (txnCache[cacheKey]) { body.innerHTML = txnCache[cacheKey]; return; }
+
+            body.innerHTML = `<span class="secondary-text">Loading<span class="loading-dots"></span></span>`;
+            try {
+              let url = `/api/recurring/transactions?streamKey=${encodeURIComponent(streamKey)}`;
+              if (section === "window") {
+                url += `&from=${encodeURIComponent(lastRecurringFrom)}&to=${encodeURIComponent(lastRecurringTo)}`;
+              }
+              const data = await request(url);
+              const html = renderTxnSubTable(data.transactions);
+              txnCache[cacheKey] = html;
+              body.innerHTML = html;
+            } catch (err) {
+              body.innerHTML = `<span class="secondary-text">${escapeHtml(err.message || "Failed to load.")}</span>`;
+            }
+          });
+        });
+      }
+
+      async function loadRecurring() {
+        setBusy(recurringRefreshButton, true);
+        recurringStatus.innerHTML = renderBanner("Detecting recurring patterns<span class='loading-dots'></span>");
+        recurringSummary.innerHTML = "";
+        recurringOutflows.innerHTML = "";
+        recurringInflows.innerHTML = "";
+
+        const from = recurringFromInput.value || null;
+        const to = recurringToInput.value || null;
+        lastRecurringFrom = from || "";
+        lastRecurringTo = to || "";
+
+        try {
+          let url = "/api/recurring";
+          const params = [];
+          if (from) params.push(`from=${encodeURIComponent(from)}`);
+          if (to) params.push(`to=${encodeURIComponent(to)}`);
+          if (params.length) url += "?" + params.join("&");
+
+          const result = await request(url);
+          recurringStatus.innerHTML = "";
+
+          if (!result.streams || result.streams.length === 0) {
+            recurringStatus.innerHTML = renderBanner("No recurring patterns detected in this window. Try a wider date range.", "warn");
+            return;
+          }
+
+          const outflows = result.streams.filter((s) => s.direction === "outflow");
+          const inflows = result.streams.filter((s) => s.direction === "inflow");
+          const t = result.totals;
+          const ft = result.frequentTotals;
+
+          recurringSummary.innerHTML = renderStats([
+            { label: "Recurring bills", value: String(t.activeOutflowCount) },
+            { label: "Income streams", value: String(t.activeInflowCount) },
+            { label: "Est. monthly outflow", value: t.estimatedMonthlyOutflow != null ? formatMoney(t.estimatedMonthlyOutflow) : "—" },
+            { label: "Est. monthly inflow", value: t.estimatedMonthlyInflow != null ? formatMoney(t.estimatedMonthlyInflow) : "—" },
+            { label: "Frequent merchants", value: String(ft.merchantCount) },
+            { label: "Frequent spend (window)", value: ft.totalWindowOutflow != null ? formatMoney(ft.totalWindowOutflow) : "—" },
+          ]);
+
+          recurringOutflows.innerHTML = renderUnifiedTable(outflows, "Expenses");
+          recurringInflows.innerHTML = renderUnifiedTable(inflows, "Income");
+
+          attachExpandListeners(recurringOutflows);
+          attachExpandListeners(recurringInflows);
+        } catch (error) {
+          recurringStatus.innerHTML = renderBanner(error.message || "Failed to detect recurring transactions.", "warn");
+        } finally {
+          setBusy(recurringRefreshButton, false);
+        }
+      }
+
+      recurringRefreshButton.addEventListener("click", loadRecurring);
+
+      recurringExportButton.addEventListener("click", async () => {
+        setBusy(recurringExportButton, true);
+        try {
+          const result = await request("/api/export", {
+            method: "POST",
+            body: JSON.stringify({ type: "recurring-streams", from: null, to: null }),
+          });
+          recurringStatus.innerHTML = renderBanner(
+            `Exported ${result.rowCount} recurring streams to ${escapeHtml(result.filePath)}`,
+          );
+        } catch (error) {
+          recurringStatus.innerHTML = renderBanner(error.message || "Export failed.", "warn");
+        } finally {
+          setBusy(recurringExportButton, false);
+        }
+      });
+
+      // -----------------------------------------------------------------------
+      // Financial Intelligence (BL04)
+      // -----------------------------------------------------------------------
+
+      const briefingButton = document.getElementById("briefing-button");
+      const briefingFromInput = document.getElementById("briefing-from");
+      const briefingToInput = document.getElementById("briefing-to");
+      const briefingOutput = document.getElementById("briefing-output");
+      const chatSection = document.getElementById("chat-section");
+      const chatMessages = document.getElementById("chat-messages");
+      const chatInput = document.getElementById("chat-input");
+      const chatSend = document.getElementById("chat-send");
+
+      let currentBriefingSessionId = null;
+      let currentBriefingRawMd = null;
+
+      briefingFromInput.addEventListener("change", loadBudgetReview);
+      briefingToInput.addEventListener("change", loadBudgetReview);
+
+      function copyToClipboard(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+          const prev = btn.textContent;
+          btn.textContent = "Copied!";
+          btn.classList.add("copied");
+          setTimeout(() => { btn.textContent = prev; btn.classList.remove("copied"); }, 1500);
+        });
+      }
+
+      function renderMarkdown(text) {
+        return text
+          .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+          .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+          .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/^- (.+)$/gm, '<li>$1</li>')
+          .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+          .replace(/\n{2,}/g, '</p><p>')
+          .replace(/\n/g, '<br>');
+      }
+
+      async function generateFinancialBriefing() {
+        setBusy(briefingButton, true);
+        briefingOutput.innerHTML = '<div class="banner">Generating briefing<span class="loading-dots"></span> This may take 15-30 seconds.</div>';
+        chatSection.style.display = "none";
+        chatMessages.innerHTML = "";
+        currentBriefingSessionId = null;
+
+        try {
+          const fromVal = briefingFromInput.value || null;
+          const toVal = briefingToInput.value || null;
+          const body = {};
+          if (fromVal) body.from = fromVal;
+          if (toVal) body.to = toVal;
+
+          const result = await request("/api/briefing", {
+            method: "POST",
+            body: JSON.stringify(body),
+          });
+
+          currentBriefingSessionId = result.sessionId;
+          currentBriefingRawMd = result.briefing;
+
+          briefingOutput.innerHTML = `
+            <div class="briefing-header" style="margin-bottom: 12px;">
+              <div class="banner" style="margin-bottom: 0; flex: 1;">
+                <strong>Period:</strong> ${escapeHtml(result.period.from)} to ${escapeHtml(result.period.to)}
+                &nbsp;•&nbsp;
+                <span class="secondary-text">Session: ${escapeHtml(result.sessionId)}</span>
+              </div>
+              <button class="copy-btn" id="copy-briefing-btn">Copy as Markdown</button>
+            </div>
+            <div class="briefing-content">${renderMarkdown(result.briefing)}</div>
+          `;
+          document.getElementById("copy-briefing-btn").addEventListener("click", function() {
+            copyToClipboard(currentBriefingRawMd, this);
+          });
+          chatSection.style.display = "block";
+        } catch (error) {
+          briefingOutput.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Failed to generate briefing.")}</div>`;
+        } finally {
+          setBusy(briefingButton, false);
+        }
+      }
+
+      function appendChatMessage(role, content, rawMd) {
+        if (role === "user") {
+          const div = document.createElement("div");
+          div.className = "chat-message user";
+          div.innerHTML = escapeHtml(content);
+          chatMessages.appendChild(div);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+          return div;
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "chat-message-wrapper assistant";
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-message assistant";
+        bubble.innerHTML = renderMarkdown(content);
+        wrapper.appendChild(bubble);
+
+        if (rawMd) {
+          const btn = document.createElement("button");
+          btn.className = "copy-btn";
+          btn.textContent = "Copy as Markdown";
+          btn.addEventListener("click", () => copyToClipboard(rawMd, btn));
+          wrapper.appendChild(btn);
+        }
+
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return bubble;
+      }
+
+      async function sendChatQuestion() {
+        const question = chatInput.value.trim();
+        if (!question) return;
+
+        chatInput.value = "";
+        appendChatMessage("user", question);
+
+        const loadingBubble = appendChatMessage("assistant", "Thinking...");
+        loadingBubble.innerHTML = '<span class="loading-dots">Thinking</span>';
+        const loadingWrapper = loadingBubble.parentElement;
+        setBusy(chatSend, true);
+        chatInput.disabled = true;
+
+        try {
+          const result = await request("/api/ask", {
+            method: "POST",
+            body: JSON.stringify({
+              question,
+              sessionId: currentBriefingSessionId,
+            }),
+          });
+
+          if (result.sessionId) {
+            currentBriefingSessionId = result.sessionId;
+          }
+
+          loadingBubble.innerHTML = renderMarkdown(result.answer);
+
+          const btn = document.createElement("button");
+          btn.className = "copy-btn";
+          btn.textContent = "Copy as Markdown";
+          btn.addEventListener("click", () => copyToClipboard(result.answer, btn));
+          loadingWrapper.appendChild(btn);
+        } catch (error) {
+          loadingBubble.innerHTML = `<span class="text-warn">${escapeHtml(error.message || "Failed to get answer.")}</span>`;
+        } finally {
+          setBusy(chatSend, false);
+          chatInput.disabled = false;
+          chatInput.focus();
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      briefingButton.addEventListener("click", generateFinancialBriefing);
+      chatSend.addEventListener("click", sendChatQuestion);
+      chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendChatQuestion();
+        }
+      });
+
+      // -----------------------------------------------------------------------
+      // File Browser
+      // -----------------------------------------------------------------------
+
+      const filesRefreshButton = document.getElementById("files-refresh-button");
+      const filesExportsList = document.getElementById("files-exports-list");
+      const filesContextList = document.getElementById("files-context-list");
+
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function renderFileList(container, files, category) {
+        if (!files || files.length === 0) {
+          container.innerHTML = '<div class="secondary-text">No files found.</div>';
+          return;
+        }
+        container.innerHTML = files.map(file => `
+          <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div>
+              <strong>${escapeHtml(file.name)}</strong>
+              <div class="secondary-text">
+                ${escapeHtml(formatFileSize(file.size))} &bull; ${escapeHtml(formatDate(file.modified))}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="secondary" style="white-space:nowrap;" onclick="window.open('/api/files/${escapeHtml(category)}/${encodeURIComponent(file.name)}/view', '_blank')">View</button>
+              <button class="secondary" style="white-space:nowrap;opacity:0.7;" onclick="window.open('/api/files/${escapeHtml(category)}/${encodeURIComponent(file.name)}', '_blank')">Raw</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      async function loadFiles() {
+        setBusy(filesRefreshButton, true);
+        try {
+          const data = await request("/api/files", { method: "GET" });
+          renderFileList(filesExportsList, data.exports, "exports");
+          renderFileList(filesContextList, data.context, "context");
+        } catch (error) {
+          filesExportsList.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Failed to load files.")}</div>`;
+          filesContextList.innerHTML = "";
+        } finally {
+          setBusy(filesRefreshButton, false);
+        }
+      }
+
+      filesRefreshButton.addEventListener("click", loadFiles);
+
+      // -----------------------------------------------------------------------
+      // BL05: Category Review Queue
+      // -----------------------------------------------------------------------
+
+      const PFC_PRIMARY_OPTIONS = [
+        "INCOME", "TRANSFER_IN", "TRANSFER_OUT", "LOAN_PAYMENTS",
+        "BANK_FEES", "ENTERTAINMENT", "FOOD_AND_DRINK",
+        "GENERAL_MERCHANDISE", "HOME_IMPROVEMENT", "MEDICAL",
+        "PERSONAL_CARE", "GENERAL_SERVICES", "GOVERNMENT_AND_NON_PROFIT",
+        "TRANSPORTATION", "TRAVEL", "RENT_AND_UTILITIES",
+      ];
+
+      const reviewBadge = document.getElementById("review-badge");
+      const reviewRunButton = document.getElementById("review-run-button");
+      const reviewFromInput = document.getElementById("review-from");
+      const reviewToInput = document.getElementById("review-to");
+      const reviewForceRerun = document.getElementById("review-force-rerun");
+      const reviewStatus = document.getElementById("review-status");
+      const reviewTableContainer = document.getElementById("review-table-container");
+      const merchantRulesRefreshButton = document.getElementById("merchant-rules-refresh-button");
+      const merchantRulesStatus = document.getElementById("merchant-rules-status");
+      const merchantRulesList = document.getElementById("merchant-rules-list");
+      const deleteOverrideInput = document.getElementById("delete-override-transaction-id");
+      const deleteOverrideButton = document.getElementById("delete-override-button");
+      const deleteOverrideStatus = document.getElementById("delete-override-status");
+
+      function renderBanner(message, type = "info") {
+        const variantClass = type === "warn" ? " warn" : "";
+        return `<div class="banner${variantClass}">${escapeHtml(message)}</div>`;
+      }
+
+      function setReviewStatus(message, type = "info") {
+        reviewStatus.innerHTML = renderBanner(message, type);
+      }
+
+      function clearReviewStatus() {
+        reviewStatus.innerHTML = "";
+      }
+
+      async function loadReviewStats() {
+        try {
+          const stats = await request("/api/overrides/stats", { method: "GET" });
+          const count = stats.pendingReviews || 0;
+          reviewBadge.textContent = String(count);
+          reviewBadge.className = count > 0 ? "badge" : "badge empty";
+        } catch (_) {
+          reviewBadge.textContent = "?";
+          reviewBadge.className = "badge empty";
+        }
+      }
+
+      async function loadPendingReviews() {
+        try {
+          const data = await request("/api/overrides/pending", { method: "GET" });
+          renderReviewTable(data.items || []);
+        } catch (error) {
+          reviewTableContainer.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Failed to load reviews.")}</div>`;
+        }
+      }
+
+      function getDetailedOptionsByPrimary(items) {
+        const map = new Map();
+        for (const item of items) {
+          const pairs = [
+            [item.suggestedPrimary, item.suggestedDetailed],
+            [item.originalPrimary, item.originalDetailed],
+          ];
+          for (const [primary, detailed] of pairs) {
+            if (!primary || !detailed) continue;
+            if (!map.has(primary)) map.set(primary, new Set());
+            map.get(primary).add(detailed);
+          }
+        }
+        for (const primary of PFC_PRIMARY_OPTIONS) {
+          if (!map.has(primary)) map.set(primary, new Set());
+          map.get(primary).add(`${primary}_OTHER`);
+        }
+        return map;
+      }
+
+      function renderDetailedOptions(primary, detailedMap, selectedDetailed) {
+        const options = Array.from(detailedMap.get(primary) || [`${primary}_OTHER`]);
+        if (!options.includes(selectedDetailed)) {
+          options.push(selectedDetailed || `${primary}_OTHER`);
+        }
+        options.sort();
+        return options
+          .map((opt) => `<option value="${escapeHtml(opt)}" ${opt === selectedDetailed ? "selected" : ""}>${escapeHtml(opt)}</option>`)
+          .join("");
+      }
+
+      function updateDetailedSelect(index) {
+        const items = reviewTableContainer._items || [];
+        const detailedMap = reviewTableContainer._detailedByPrimary;
+        const item = items[index];
+        if (!item || !detailedMap) return;
+        const primarySelect = document.getElementById(`edit-primary-${index}`);
+        const detailedSelect = document.getElementById(`edit-detailed-${index}`);
+        if (!primarySelect || !detailedSelect) return;
+        const fallbackDetailed = `${primarySelect.value}_OTHER`;
+        const selectedDetailed = detailedSelect.value || fallbackDetailed;
+        detailedSelect.innerHTML = renderDetailedOptions(
+          primarySelect.value,
+          detailedMap,
+          selectedDetailed,
+        );
+      }
+
+      function normalizeReviewDescription(value) {
+        return String(value || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function sortReviewItemsByLatest(items) {
+        return [...items].sort((left, right) => {
+          const leftDate = left.transactionDate || "";
+          const rightDate = right.transactionDate || "";
+          return rightDate.localeCompare(leftDate) || right.transactionId.localeCompare(left.transactionId);
+        });
+      }
+
+      function groupReviewItems(items) {
+        const groups = new Map();
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const merchantKey = normalizeReviewDescription(item.merchantName || "unknown-merchant");
+          const descriptionTokens = normalizeReviewDescription(item.transactionName || "")
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .join(" ");
+          const descriptionKey = descriptionTokens || "misc";
+          const groupKey = `${merchantKey}::${descriptionKey}`;
+          const group = groups.get(groupKey) || {
+            key: groupKey,
+            merchantLabel: item.merchantName || "Unknown merchant",
+            descriptionLabel: descriptionKey,
+            itemIndexes: [],
+            firstIndex: i,
+          };
+          group.itemIndexes.push(i);
+          groups.set(groupKey, group);
+        }
+        // Preserve global latest-first ordering by placing each group at the
+        // earliest (newest) item index it contains.
+        return Array.from(groups.values()).sort((a, b) => a.firstIndex - b.firstIndex);
+      }
+
+      function getMatchKeyAvailability(item) {
+        if (item.merchantEntityId) {
+          return {
+            className: "entity",
+            label: "Match key: entity-id + description",
+          };
+        }
+        if (item.merchantName) {
+          return {
+            className: "name",
+            label: "Match key: merchant-name + description",
+          };
+        }
+        return {
+          className: "limited",
+          label: "Match key: limited (no merchant identity)",
+        };
+      }
+
+      function formatReviewLocation(item) {
+        const parts = [
+          item.transactionLocationCity,
+          item.transactionLocationRegion,
+          item.transactionLocationCountry,
+        ].filter(Boolean);
+        return parts.length > 0 ? parts.join(", ") : "Unknown";
+      }
+
+      function renderReviewTable(items) {
+        if (!items.length) {
+          reviewTableContainer.innerHTML = '<div class="secondary-text review-empty">No pending reviews. Run a category review to check for miscategorized transactions.</div>';
+          return;
+        }
+
+        const sortedItems = sortReviewItemsByLatest(items);
+        const detailedByPrimary = getDetailedOptionsByPrimary(sortedItems);
+        const grouped = groupReviewItems(sortedItems);
+
+        let html = `
+          <div class="stack-top-16">
+          <table class="review-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Merchant / Name</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Original</th>
+                <th></th>
+                <th>Suggested</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        for (let groupIndex = 0; groupIndex < grouped.length; groupIndex++) {
+          const group = grouped[groupIndex];
+          const groupId = `review-group-${groupIndex}`;
+          const groupLabel = group.descriptionLabel === "misc"
+            ? group.merchantLabel
+            : `${group.merchantLabel} • ${group.descriptionLabel}`;
+          html += `
+            <tr class="review-group-row">
+              <td colspan="8">
+                <button class="review-group-toggle" type="button" onclick="toggleGroupRows('${groupId}', this)" aria-expanded="true">
+                  ▼ Similar: ${escapeHtml(groupLabel)} (${group.itemIndexes.length})
+                </button>
+              </td>
+            </tr>
+          `;
+          for (const i of group.itemIndexes) {
+            const item = sortedItems[i];
+            const expandId = "review-expand-" + i;
+            const primaryValue = item.suggestedPrimary;
+            const detailedValue = item.suggestedDetailed || `${primaryValue}_OTHER`;
+            const matchKey = getMatchKeyAvailability(item);
+            html += `
+              <tr class="review-summary-row review-group-item ${groupId}" data-expand="${expandId}" role="button" tabindex="0" aria-expanded="false">
+                <td style="width:24px;">
+                  <button class="expand-toggle" type="button" aria-label="Toggle details" onclick="event.preventDefault();event.stopPropagation(); toggleReviewRow('${expandId}', this.closest('tr.review-summary-row'));">
+                    <span class="expand-icon" id="icon-${expandId}">&#9654;</span>
+                  </button>
+                </td>
+                <td>
+                  <strong>${escapeHtml(item.merchantName || item.transactionName || "Unknown")}</strong>
+                  ${item.merchantName && item.transactionName ? `<br><span class="secondary-text">${escapeHtml(item.transactionName)}</span>` : ""}
+                  <br><span class="secondary-text">Location: ${escapeHtml(formatReviewLocation(item))}</span>
+                  <br><span class="match-badge ${matchKey.className}">${escapeHtml(matchKey.label)}</span>
+                </td>
+                <td><span class="secondary-text">${escapeHtml(item.transactionDate || "Unknown")}</span></td>
+                <td>${escapeHtml(formatMoney(item.transactionAmount, "USD"))}</td>
+                <td><span class="pill">${escapeHtml(item.originalPrimary || "?")}</span></td>
+                <td class="cat-arrow">&#8594;</td>
+                <td><span class="pill success">${escapeHtml(item.suggestedPrimary)}</span></td>
+                <td>
+                  <div class="review-actions">
+                    <button class="accept" onclick="event.stopPropagation(); acceptReview(${i})">Accept</button>
+                    <button class="reject" onclick="event.stopPropagation(); rejectReview(${i})">Reject</button>
+                  </div>
+                </td>
+              </tr>
+              <tr class="expand-row review-group-item ${groupId}" id="${expandId}">
+                <td colspan="8">
+                  <div>
+                    <div class="review-detail">
+                      <div class="reasoning">${escapeHtml(item.llmReasoning || "No reasoning provided.")}</div>
+                      <div class="kv" style="margin-top:0; margin-bottom:12px;">
+                        <div>
+                          <dt>Original category</dt>
+                          <dd>${escapeHtml(item.originalPrimary || "?")} / ${escapeHtml(item.originalDetailed || "?")}</dd>
+                        </div>
+                        <div>
+                          <dt>Suggested category</dt>
+                          <dd>${escapeHtml(item.suggestedPrimary)} / ${escapeHtml(item.suggestedDetailed)}</dd>
+                        </div>
+                        <div>
+                          <dt>Transaction ID</dt>
+                          <dd style="font-size:11px;word-break:break-all;">${escapeHtml(item.transactionId)}</dd>
+                        </div>
+                        <div>
+                          <dt>Date</dt>
+                          <dd>${escapeHtml(item.transactionDate || "Unknown")}</dd>
+                        </div>
+                        <div>
+                          <dt>Amount</dt>
+                          <dd>${escapeHtml(formatMoney(item.transactionAmount, "USD"))}</dd>
+                        </div>
+                        <div>
+                          <dt>Location</dt>
+                          <dd>${escapeHtml(formatReviewLocation(item))}</dd>
+                        </div>
+                      </div>
+                      <div class="edit-row">
+                        <label>Override to:</label>
+                        <select id="edit-primary-${i}">
+                          ${PFC_PRIMARY_OPTIONS.map(cat =>
+                            `<option value="${cat}" ${cat === item.suggestedPrimary ? "selected" : ""}>${cat}</option>`
+                          ).join("")}
+                        </select>
+                        <select id="edit-detailed-${i}">
+                          ${renderDetailedOptions(primaryValue, detailedByPrimary, detailedValue)}
+                        </select>
+                        <label>
+                          <input type="checkbox" id="edit-merchant-${i}" ${item.merchantName ? "" : "disabled"} />
+                          Apply to similar descriptions for this merchant
+                        </label>
+                      </div>
+                      <div class="review-actions">
+                        <button class="accept" onclick="acceptReviewCustom(${i})">Accept with edits</button>
+                        <button class="reject" onclick="rejectReview(${i})">Reject</button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+        }
+
+        html += "</tbody></table></div>";
+        reviewTableContainer.innerHTML = html;
+
+        reviewTableContainer._items = sortedItems;
+        reviewTableContainer._detailedByPrimary = detailedByPrimary;
+
+        for (const row of reviewTableContainer.querySelectorAll(".review-summary-row")) {
+          row.addEventListener("click", (event) => {
+            if (event.target.closest(".review-actions")) return;
+            toggleReviewRow(row.dataset.expand, row);
+          });
+          row.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            toggleReviewRow(row.dataset.expand, row);
+          });
+        }
+
+        for (let i = 0; i < items.length; i++) {
+          const primarySelect = document.getElementById(`edit-primary-${i}`);
+          if (!primarySelect) continue;
+          primarySelect.addEventListener("change", () => updateDetailedSelect(i));
+        }
+      }
+
+      function toggleGroupRows(groupId, buttonEl) {
+        const rows = reviewTableContainer.querySelectorAll(`tr.${groupId}`);
+        if (!rows.length) return;
+        const isHidden = rows[0].style.display === "none";
+        for (const row of rows) {
+          row.style.display = isHidden ? "" : "none";
+        }
+        if (buttonEl) {
+          buttonEl.textContent = buttonEl.textContent.replace(
+            isHidden ? "▶" : "▼",
+            isHidden ? "▼" : "▶",
+          );
+          buttonEl.setAttribute("aria-expanded", isHidden ? "true" : "false");
+        }
+      }
+
+      function toggleReviewRow(expandId, rowEl) {
+        const expandRow = document.getElementById(expandId);
+        const icon = document.getElementById("icon-" + expandId);
+        if (!expandRow || !rowEl) return;
+        const isOpen = expandRow.classList.toggle("open");
+        rowEl.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        if (icon) icon.innerHTML = isOpen ? "&#9660;" : "&#9654;";
+      }
+
+      async function acceptReview(index) {
+        const items = reviewTableContainer._items;
+        if (!items || !items[index]) return;
+        const item = items[index];
+        try {
+          await request("/api/overrides", {
+            method: "POST",
+            body: JSON.stringify({
+              transactionId: item.transactionId,
+              primary: item.suggestedPrimary,
+              detailed: item.suggestedDetailed,
+              source: "llm",
+              reviewAction: "accept",
+            }),
+          });
+          clearReviewStatus();
+          await refreshReviewUI();
+        } catch (error) {
+          setReviewStatus("Failed to accept: " + (error.message || "Unknown error"), "warn");
+        }
+      }
+
+      async function acceptReviewCustom(index) {
+        const items = reviewTableContainer._items;
+        if (!items || !items[index]) return;
+        const item = items[index];
+        const select = document.getElementById("edit-primary-" + index);
+        const detailedSelect = document.getElementById("edit-detailed-" + index);
+        const merchantCheckbox = document.getElementById("edit-merchant-" + index);
+        const primary = select ? select.value : item.suggestedPrimary;
+        const detailed = detailedSelect ? detailedSelect.value : `${primary}_OTHER`;
+        try {
+          const body = {
+            transactionId: item.transactionId,
+            primary,
+            detailed,
+            source: "manual",
+            reviewAction: "accept",
+          };
+          if (merchantCheckbox && merchantCheckbox.checked && item.merchantName) {
+            body.applyMerchantRule = true;
+            body.merchantName = item.merchantName;
+            body.merchantEntityId = item.merchantEntityId || null;
+            body.transactionName = item.transactionName || null;
+          }
+          const result = await request("/api/overrides", {
+            method: "POST",
+            body: JSON.stringify(body),
+          });
+          if ((result.autoResolvedPendingCount || 0) > 0) {
+            setReviewStatus(
+              `Applied merchant similarity rule and auto-resolved ${result.autoResolvedPendingCount} matching pending review item(s).`,
+            );
+          } else {
+            clearReviewStatus();
+          }
+          await refreshReviewUI();
+        } catch (error) {
+          setReviewStatus("Failed to accept: " + (error.message || "Unknown error"), "warn");
+        }
+      }
+
+      async function rejectReview(index) {
+        const items = reviewTableContainer._items;
+        if (!items || !items[index]) return;
+        const item = items[index];
+        try {
+          await request("/api/overrides/reject", {
+            method: "POST",
+            body: JSON.stringify({ transactionId: item.transactionId }),
+          });
+          clearReviewStatus();
+          await refreshReviewUI();
+        } catch (error) {
+          setReviewStatus("Failed to reject: " + (error.message || "Unknown error"), "warn");
+        }
+      }
+
+      async function refreshReviewUI() {
+        await Promise.all([loadReviewStats(), loadPendingReviews(), loadMerchantRules()]);
+      }
+
+      function renderReviewProgress(progress) {
+        const total = Number(progress?.total || 0);
+        const reviewed = Number(progress?.reviewed || 0);
+        const safeReviewed = Math.min(reviewed, total);
+        const percent = total > 0 ? Math.round((safeReviewed / total) * 100) : 0;
+        const windowParts = [];
+        if (progress?.from) windowParts.push(`from <strong>${escapeHtml(progress.from)}</strong>`);
+        if (progress?.to) windowParts.push(`to <strong>${escapeHtml(progress.to)}</strong>`);
+        const windowLabel = windowParts.length > 0 ? ` (${windowParts.join(" ")})` : "";
+        reviewStatus.innerHTML = `
+          <div class="banner">
+            Processing <strong>${safeReviewed}</strong> / <strong>${total}</strong> transactions${windowLabel}
+            (${percent}% complete)<span class="loading-dots"></span>
+          </div>
+        `;
+      }
+
+      async function runCategoryReview() {
+        const from = reviewFromInput.value || null;
+        const to = reviewToInput.value || null;
+        const forceReReview = Boolean(reviewForceRerun.checked);
+        if (from && to && from > to) {
+          reviewStatus.innerHTML = '<div class="banner warn">From date must be earlier than or equal to To date.</div>';
+          return;
+        }
+
+        setBusy(reviewRunButton, true);
+        reviewStatus.innerHTML = '<div class="banner">Preparing category review run<span class="loading-dots"></span></div>';
+        let pollTimer = null;
+        try {
+          pollTimer = setInterval(async () => {
+            try {
+              const progress = await request("/api/overrides/review/progress", { method: "GET" });
+              if (!progress.active) return;
+              renderReviewProgress(progress);
+            } catch (_) {
+              // Keep polling even if one poll fails.
+            }
+          }, 800);
+
+          const result = await request("/api/overrides/review", {
+            method: "POST",
+            body: JSON.stringify({ from, to, forceReReview }),
+          });
+          const windowParts = [];
+          if (result.from) windowParts.push(`from <strong>${escapeHtml(result.from)}</strong>`);
+          if (result.to) windowParts.push(`to <strong>${escapeHtml(result.to)}</strong>`);
+          const windowLabel = windowParts.length > 0 ? ` (${windowParts.join(" ")})` : "";
+          const forceLabel = result.forceReReview
+            ? ` Cleared ledger reset: <strong>${result.clearedLedgerReset || 0}</strong>.`
+            : "";
+          reviewStatus.innerHTML = `
+            <div class="banner">
+              Reviewed <strong>${result.reviewed}</strong> transactions,
+              flagged <strong>${result.added}</strong> for review${windowLabel}.${forceLabel}
+            </div>
+          `;
+          await refreshReviewUI();
+        } catch (error) {
+          reviewStatus.innerHTML = `<div class="banner warn">${escapeHtml(error.message || "Category review failed.")}</div>`;
+        } finally {
+          if (pollTimer) {
+            clearInterval(pollTimer);
+          }
+          setBusy(reviewRunButton, false);
+        }
+      }
+
+      function renderMerchantRules(rules) {
+        if (!Array.isArray(rules) || rules.length === 0) {
+          merchantRulesList.innerHTML = '<div class="secondary-text">No merchant rules yet.</div>';
+          return;
+        }
+        merchantRulesList.innerHTML = rules
+          .map((rule, index) => `
+            <div class="mini-card">
+              <div class="inline-row">
+                <div>
+                  <strong>${escapeHtml(rule.merchantName || "Unknown merchant")}</strong>
+                  <div class="secondary-text mono-id">${escapeHtml(rule.merchantEntityId || "no_entity_id")}</div>
+                </div>
+                <div class="mini-actions">
+                  <button class="reject" onclick="deleteMerchantRule(${index})">Delete</button>
+                </div>
+              </div>
+              <div class="stack-top-16">
+                <span class="pill">${escapeHtml(rule.overridePrimary || "?")}</span>
+                <span class="secondary-text"> / ${escapeHtml(rule.overrideDetailed || "?")}</span>
+                ${rule.matchDescription ? `<div class="secondary-text">Match description: ${escapeHtml(rule.matchDescription)}</div>` : ""}
+              </div>
+            </div>
+          `)
+          .join("");
+        merchantRulesList._rules = rules;
+      }
+
+      async function loadMerchantRules() {
+        setBusy(merchantRulesRefreshButton, true);
+        merchantRulesStatus.innerHTML = "";
+        try {
+          const response = await request("/api/overrides/merchant-rules", { method: "GET" });
+          renderMerchantRules(response.rules || []);
+        } catch (error) {
+          merchantRulesStatus.innerHTML = renderBanner(error.message || "Failed to load merchant rules.", "warn");
+        } finally {
+          setBusy(merchantRulesRefreshButton, false);
+        }
+      }
+
+      async function deleteMerchantRule(index) {
+        const rules = merchantRulesList._rules || [];
+        const rule = rules[index];
+        if (!rule) return;
+        try {
+          await request("/api/overrides/merchant-rules", {
+            method: "DELETE",
+            body: JSON.stringify({
+              merchantName: rule.merchantName || null,
+              merchantEntityId: rule.merchantEntityId || null,
+            }),
+          });
+          merchantRulesStatus.innerHTML = renderBanner("Merchant rule removed.");
+          await loadMerchantRules();
+        } catch (error) {
+          merchantRulesStatus.innerHTML = renderBanner(error.message || "Failed to delete merchant rule.", "warn");
+        }
+      }
+
+      window.deleteMerchantRule = deleteMerchantRule;
+
+      async function deleteOverrideByTransactionId() {
+        const transactionId = deleteOverrideInput.value.trim();
+        if (!transactionId) {
+          deleteOverrideStatus.innerHTML = renderBanner("Enter a transaction ID first.", "warn");
+          return;
+        }
+        setBusy(deleteOverrideButton, true);
+        deleteOverrideStatus.innerHTML = "";
+        try {
+          await request(`/api/overrides/${encodeURIComponent(transactionId)}`, {
+            method: "DELETE",
+            body: JSON.stringify({}),
+          });
+          deleteOverrideStatus.innerHTML = renderBanner("Override deleted.");
+          deleteOverrideInput.value = "";
+          await refreshReviewUI();
+        } catch (error) {
+          deleteOverrideStatus.innerHTML = renderBanner(error.message || "Failed to delete override.", "warn");
+        } finally {
+          setBusy(deleteOverrideButton, false);
+        }
+      }
+
+      reviewRunButton.addEventListener("click", runCategoryReview);
+      merchantRulesRefreshButton.addEventListener("click", loadMerchantRules);
+      deleteOverrideButton.addEventListener("click", deleteOverrideByTransactionId);
+
+      renderResultSummary("No result yet.");
+      loadHealth();
+      loadFiles();
+      loadInvestmentSummary();
+      loadBudgetReview();
+      refreshReviewUI();
+    </script>
+  </body>
+</html>

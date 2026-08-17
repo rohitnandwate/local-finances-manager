@@ -1,0 +1,31 @@
+---
+description:
+alwaysApply: true
+---
+
+# AI Agent Guidelines (local-finances-manager)
+
+Public OSS: **local-first** personal finance (Plaid, exports, budgets, optional AI). Keep changes contributor-friendly.
+
+## Source of truth
+
+| Area | Location |
+|------|----------|
+| App behavior | `src/`, `public/`, `README.md`, `.env.example` |
+| Operator runbooks | `docs/operations/` (index: `docs/README.md`) |
+| Work tracking | GitHub Issues on `rohitnandwate/local-finances-manager` |
+
+## Safety (never commit)
+
+- `.data/`, `.env`, `.env.local`, `exports/`, `briefings/`, `data/imports/`, user portfolio data
+- Secrets, tokens, or personal financial exports
+
+Run `npm run scan:secrets` when touching secrets-adjacent paths. Contributors should run `npm run setup:hooks` once per clone.
+
+## Workflow
+
+1. **Plan** — Read README and relevant `docs/operations/` runbook.
+2. **Execute** — Minimal focused diff; match existing style.
+3. **Verify** — `npm run typecheck`; related smoke tests or `npm test` when appropriate.
+
+See [AGENTS.md](AGENTS.md) for tool-agnostic agent instructions.

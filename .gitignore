@@ -1,0 +1,26 @@
+.env
+.env.local
+.data/
+# Local investment import dumps (user-provided brokerage exports)
+data/fixtures/DetailedHoldings.tsv
+data/fixtures/*Holdings*.csv
+data/fixtures/*Holdings*.tsv
+data/imports/
+context/
+!context/
+context/*
+!context/budgets.template.yml
+dist/
+exports/
+briefings/
+# Local portfolio / holdings TSVs + plan outputs (user-maintained, not versioned)
+portfolio/**
+!portfolio/scripts/
+!portfolio/scripts/**
+node_modules/
+.venv-equity/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class

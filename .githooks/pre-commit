@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Scan staged changes for secrets before commit (gitleaks).
+# Enable: npm run setup:hooks
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if [[ "${SKIP_SECRET_SCAN:-}" == "1" ]]; then
+  echo "pre-commit: SKIP_SECRET_SCAN=1 — secret scan skipped." >&2
+  exit 0
+fi
+
+exec node scripts/run-gitleaks.mjs --staged

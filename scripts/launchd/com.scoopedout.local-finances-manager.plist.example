@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS LaunchAgent — runs when you log in (not when logged out).
+
+  Use a dedicated runtime clone (separate from your dev checkout), e.g. ~/local-finances-manager-runtime:
+  1. git clone https://github.com/rohitnandwate/local-finances-manager.git ~/local-finances-manager-runtime
+  2. cd ~/local-finances-manager-runtime && npm ci && npm run build
+  3. Copy .env.local into that checkout (secrets stay out of the plist). When HOST=0.0.0.0 below,
+     .env.local must set LAN_ACCESS_CODE and LAN_ALLOWED_WIFI_SSIDS unless you use
+     BUDGET_TRACKER_DISABLE_WIFI_GATING=1.
+  4. Copy this file to ~/Library/LaunchAgents/com.scoopedout.local-finances-manager.plist
+  5. Edit WorkingDirectory and dist/src/server.js paths to your runtime checkout
+  6. Edit log paths to your HOME
+  7. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.scoopedout.local-finances-manager.plist
+
+  Node path: run `which node` (Homebrew is often /opt/homebrew/bin/node on Apple Silicon).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.scoopedout.local-finances-manager</string>
+  <key>WorkingDirectory</key>
+  <string>/ABSOLUTE/PATH/TO/local-finances-manager-runtime</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/ABSOLUTE/PATH/TO/local-finances-manager-runtime/dist/src/server.js</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOST</key>
+    <string>0.0.0.0</string>
+    <key>PORT</key>
+    <string>3000</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USER/Library/Logs/local-finances-manager.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USER/Library/Logs/local-finances-manager.err.log</string>
+</dict>
+</plist>

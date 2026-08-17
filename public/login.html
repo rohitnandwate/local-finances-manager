@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in — Budget Tracker</title>
+    <script>
+      (function () {
+        var s = localStorage.getItem("theme");
+        if (s === "light" || s === "dark") document.documentElement.setAttribute("data-theme", s);
+      })();
+    </script>
+    <style>
+      :root,
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --fg: #e2e8f0;
+        --card-bg: #111827;
+        --border: #334155;
+        --muted: #94a3b8;
+        --accent: #2563eb;
+        --accent-fg: white;
+        --warn-bg: rgba(245, 158, 11, 0.14);
+        --warn-border: rgba(245, 158, 11, 0.35);
+        --warn-fg: #fde68a;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme="dark"]) {
+          color-scheme: light;
+          --bg: #f8fafc;
+          --fg: #1e293b;
+          --card-bg: #ffffff;
+          --border: #e2e8f0;
+          --muted: #64748b;
+          --accent: #2563eb;
+          --accent-fg: white;
+          --warn-bg: rgba(245, 158, 11, 0.1);
+          --warn-border: rgba(245, 158, 11, 0.4);
+          --warn-fg: #92400e;
+        }
+      }
+
+      [data-theme="light"] {
+        color-scheme: light;
+        --bg: #f8fafc;
+        --fg: #1e293b;
+        --card-bg: #ffffff;
+        --border: #e2e8f0;
+        --muted: #64748b;
+        --accent: #2563eb;
+        --accent-fg: white;
+        --warn-bg: rgba(245, 158, 11, 0.1);
+        --warn-border: rgba(245, 158, 11, 0.4);
+        --warn-fg: #92400e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 22rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem 1.25rem;
+      }
+
+      h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.15rem;
+        font-weight: 600;
+      }
+
+      .sub {
+        margin: 0 0 1.25rem;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+
+      label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 0.35rem;
+      }
+
+      input[type="password"] {
+        width: 100%;
+        padding: 0.55rem 0.65rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--fg);
+        font-size: 1rem;
+      }
+
+      input[type="password"]:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 1rem;
+        padding: 0.6rem 0.75rem;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: var(--accent-fg);
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+
+      .error {
+        display: none;
+        margin-top: 0.85rem;
+        padding: 0.55rem 0.65rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        background: var(--warn-bg);
+        border: 1px solid var(--warn-border);
+        color: var(--warn-fg);
+      }
+
+      .error.visible {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Budget Tracker</h1>
+      <p class="sub">Enter the access code for this network.</p>
+      <form id="form" novalidate>
+        <label for="code">Access code</label>
+        <input id="code" name="code" type="password" autocomplete="current-password" required />
+        <button type="submit" id="submit">Continue</button>
+      </form>
+      <div id="error" class="error" role="alert"></div>
+    </div>
+    <script>
+      const form = document.getElementById("form");
+      const codeInput = document.getElementById("code");
+      const submitBtn = document.getElementById("submit");
+      const errorEl = document.getElementById("error");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.textContent = "";
+        errorEl.classList.remove("visible");
+        const code = codeInput.value;
+        submitBtn.disabled = true;
+        try {
+          const res = await fetch("/api/auth/lan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(body.error || "Could not sign in.");
+          }
+          window.location.href = "/";
+        } catch (err) {
+          errorEl.textContent = err.message || "Something went wrong.";
+          errorEl.classList.add("visible");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
