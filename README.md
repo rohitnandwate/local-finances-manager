@@ -22,12 +22,12 @@
 1. [Sign up / sign in](https://dashboard.plaid.com/) to the Plaid Dashboard.
 2. Under **Team Settings** → **Keys**, copy **Client ID** and the secret for your environment.
 
-**New to Plaid?** Start with **Sandbox** (test institutions, no live banks):
+**New to Plaid?** Start with **Sandbox** (test institutions, no live banks). New Dashboard accounts are Sandbox-first:
 
 - Set `PLAID_ENV=sandbox` and `SANDBOX_PLAID_SECRET` in `.env.local`.
-- Details: [docs/operations/plaid-sandbox-setup.md](docs/operations/plaid-sandbox-setup.md)
+- Step-by-step: [docs/operations/plaid-sandbox-setup.md](docs/operations/plaid-sandbox-setup.md)
 
-**Live institutions (default):** use `PLAID_ENV=production` and `PROD_PLAID_SECRET` (see [.env.example](.env.example)).
+**Live institutions:** after Plaid Production approval, use `PLAID_ENV=production` and `PROD_PLAID_SECRET` (see [.env.example](.env.example)). The secret must match `PLAID_ENV`.
 
 ### Budget file (optional but recommended)
 

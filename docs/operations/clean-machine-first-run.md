@@ -31,7 +31,7 @@ Record start and end time; `npm run onboard` prints UTC timestamps in its summar
 
 1. [ ] `git clone` the repo into a **new** directory.
 2. [ ] `cp context/budgets.template.yml context/budgets.yml` (optional).
-3. [ ] Plaid Dashboard **Client ID** + secret for your `PLAID_ENV` ([Sandbox](./plaid-sandbox-setup.md) or Production per README).
+3. [ ] Plaid Dashboard **Client ID** + secret for your `PLAID_ENV` ([Sandbox first](./plaid-sandbox-setup.md); Production after approval).
 4. [ ] `npm run init` (or manual `npm ci` + `.env.local` per README).
 5. [ ] `npm run onboard` — add `--install` if needed; `--full` for `npm test`.
 6. [ ] Confirm `.env.local` matches this clone; omit LLM keys unless testing AI features.

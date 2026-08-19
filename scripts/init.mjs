@@ -1,6 +1,6 @@
 /**
  * Guided first-time setup: dependencies, `.env.local` from `.env.example`,
- * Plaid Production credentials (default), optional `npm run dev`.
+ * Plaid Sandbox credentials (default), optional Production, optional `npm run dev`.
  *
  * Usage: npm run init [-- options]
  *   --yes, -y        Non-interactive scaffold (no credential prompts).
@@ -415,10 +415,10 @@ async function main() {
   let envText = await readFile(envLocal, "utf8");
 
   if (opts.yes && !interactive) {
-    envText = upsertEnvLine(envText, "PLAID_ENV", "production");
+    envText = upsertEnvLine(envText, "PLAID_ENV", "sandbox");
     await writeFile(envLocal, envText, "utf8");
     console.log(
-      "Scaffold done. Set PLAID_CLIENT_ID and PROD_PLAID_SECRET in .env.local, then npm run dev.",
+      "Scaffold done. Set PLAID_CLIENT_ID and SANDBOX_PLAID_SECRET in .env.local (or Production keys if you already have them), then npm run dev.",
     );
     process.exit(0);
   }
@@ -431,11 +431,18 @@ async function main() {
   const rl = createInterface({ input, output });
   if (opts.verbose) {
     console.log(
-      "\nPlaid (dashboard.plaid.com): Client ID + Production secret — typing is visible in this terminal.\n",
+      "\nPlaid (dashboard.plaid.com): Client ID + the secret for your PLAID_ENV. Typing is visible in this terminal.\n",
     );
   }
 
-  envText = upsertEnvLine(envText, "PLAID_ENV", "production");
+  const useSandbox = await defaultYes(
+    rl,
+    "Use Plaid Sandbox? (recommended for new Plaid accounts; Production needs Dashboard approval)",
+    { preferYes: true },
+  );
+  const plaidEnv = useSandbox ? "sandbox" : "production";
+  const secretKey = useSandbox ? "SANDBOX_PLAID_SECRET" : "PROD_PLAID_SECRET";
+  envText = upsertEnvLine(envText, "PLAID_ENV", plaidEnv);
 
   let clientId = getEnvValue(envText, "PLAID_CLIENT_ID");
   if (!needsPlaidValue(clientId)) {
@@ -454,19 +461,19 @@ async function main() {
     envText = upsertEnvLine(envText, "PLAID_CLIENT_ID", clientId);
   }
 
-  let secret = getEnvValue(envText, "PROD_PLAID_SECRET");
+  let secret = getEnvValue(envText, secretKey);
   if (!needsPlaidValue(secret)) {
     const ch = (
-      await rl.question("PROD_PLAID_SECRET is already set. Replace? [y/N] ")
+      await rl.question(`${secretKey} is already set. Replace? [y/N] `)
     )
       .trim()
       .toLowerCase();
     if (ch === "y" || ch === "yes") secret = "";
-    dbg("PROD_PLAID_SECRET replace?", ch);
+    dbg(`${secretKey} replace?`, ch);
   }
   if (needsPlaidValue(secret)) {
-    secret = (await rl.question("PROD_PLAID_SECRET: ")).trim();
-    envText = upsertEnvLine(envText, "PROD_PLAID_SECRET", secret);
+    secret = (await rl.question(`${secretKey}: `)).trim();
+    envText = upsertEnvLine(envText, secretKey, secret);
   }
 
   await writeFile(envLocal, envText, "utf8");

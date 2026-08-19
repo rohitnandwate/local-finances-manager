@@ -135,6 +135,7 @@ export const config = {
     countryCodes: parseList(process.env.PLAID_COUNTRY_CODES, ["US"]),
     products: parseList(process.env.PLAID_PRODUCTS, ["transactions"]),
     daysRequested: parseDaysRequested(process.env.PLAID_DAYS_REQUESTED),
+    redirectUri: (process.env.PLAID_REDIRECT_URI ?? "").trim(),
   },
   llm: {
     provider: llmProvider,
