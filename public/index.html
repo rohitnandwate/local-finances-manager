@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Budget Tracker — Financial Intelligence</title>
+    <title>Local Finances Manager</title>
     <script>
       (function() {
         var s = localStorage.getItem("theme");
@@ -512,6 +512,18 @@
         color: var(--accent-fg);
       }
       .tab-hidden { display: none !important; }
+      .setup-steps { line-height: 1.5; padding-left: 1.2rem; }
+      .setup-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 16px; }
+      .setup-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+      .setup-item .setup-detail { color: var(--muted); font-size: 13px; }
       .chat-section {
         display: none;
         margin-top: 20px;
@@ -737,7 +749,7 @@
   <body>
     <main>
       <div class="inline-row">
-        <h1 style="margin:0;">Budget Tracker — Financial Intelligence</h1>
+        <h1 style="margin:0;">Local Finances Manager</h1>
         <div class="theme-toggle" id="theme-toggle">
           <button data-theme="system" aria-pressed="false">System</button>
           <button data-theme="light" aria-pressed="false">Light</button>
@@ -745,20 +757,46 @@
         </div>
       </div>
       <p>
-        Personal finance tool with Plaid connectivity, transaction intelligence,
-        AI-powered briefings and chat, and LLM-assisted category review.
-        Use the briefing panel to understand spending, ask follow-up questions in the chat,
-        or run a category review on the Review tab.
+        Local-first personal finance on this machine: Plaid accounts, review,
+        budgets, and exports. Category review, briefings, and chat are optional
+        and need an LLM key. Start on the Setup tab if you are new here.
       </p>
 
       <nav class="tab-nav" id="tab-nav" aria-label="Main sections">
-        <button class="active" data-tab-target="analyze">Analyze</button>
+        <button class="active" data-tab-target="setup">Setup</button>
+        <button data-tab-target="analyze">Analyze</button>
         <button data-tab-target="recurring">Recurring</button>
         <button data-tab-target="review">Review</button>
         <button data-tab-target="investments">Investments</button>
         <button data-tab-target="data">Data</button>
         <button data-tab-target="connect">Connect</button>
       </nav>
+
+      <section class="card" id="setup-section" data-tab-group="setup">
+        <h2>Setup</h2>
+        <p class="secondary-text">
+          First-run and later: see what this clone still needs. Secrets stay in
+          gitignored <code>.env.local</code>. Restart the server after you edit that file.
+          LLM keys are optional.
+        </p>
+        <div id="setup-checklist">Loading...</div>
+        <h3>Plaid in five steps</h3>
+        <ol class="setup-steps">
+          <li>Create an app in the <a href="https://dashboard.plaid.com/" target="_blank" rel="noreferrer">Plaid Dashboard</a>.</li>
+          <li>Enable <strong>Transactions</strong> (US is the default). Add Investments later if you need holdings.</li>
+          <li>New Plaid accounts: copy the <strong>Sandbox</strong> secret. Set <code>PLAID_ENV=sandbox</code> and <code>SANDBOX_PLAID_SECRET</code>. Production secrets only work after Dashboard approval, and they must match <code>PLAID_ENV</code>.</li>
+          <li>For OAuth banks, add <code>http://127.0.0.1:3000/</code> as an allowed redirect URI, then optionally set <code>PLAID_REDIRECT_URI</code> to the same URL.</li>
+          <li>Restart, then connect below or on the Connect tab. Use a Sandbox test bank first.</li>
+        </ol>
+        <p class="secondary-text">
+          Full runbook:
+          <a href="https://github.com/rohitnandwate/local-finances-manager/blob/main/docs/operations/plaid-sandbox-setup.md">docs/operations/plaid-sandbox-setup.md</a>.
+        </p>
+        <div class="actions">
+          <button id="setup-connect-button">Connect with Plaid</button>
+          <button id="setup-goto-connect" class="secondary">Open Connect tab</button>
+        </div>
+      </section>
 
       <section class="card" id="intelligence-section" data-tab-group="analyze">
         <h2>Financial Intelligence</h2>
@@ -1107,6 +1145,7 @@
         const tabNav = document.getElementById("tab-nav");
         const storageKey = "activeUiTab";
         const hashToTab = {
+          "#setup": "setup",
           "#analyze": "analyze",
           "#recurring": "recurring",
           "#review": "review",
@@ -1119,6 +1158,7 @@
 
         function activateTab(tab) {
           const validTab = [
+            "setup",
             "analyze",
             "recurring",
             "review",
@@ -1127,7 +1167,7 @@
             "connect",
           ].includes(tab)
             ? tab
-            : "analyze";
+            : "setup";
           localStorage.setItem(storageKey, validTab);
           for (const btn of tabNav.querySelectorAll("button[data-tab-target]")) {
             btn.classList.toggle("active", btn.dataset.tabTarget === validTab);
@@ -1153,13 +1193,14 @@
 
         const fromHash = hashToTab[window.location.hash];
         const stored = localStorage.getItem(storageKey);
-        activateTab(fromHash || stored || "analyze");
+        activateTab(fromHash || stored || "setup");
       })();
 
       const healthOutput = document.getElementById("health-output");
       const providerSummary = document.getElementById("provider-summary");
       const sessionSummary = document.getElementById("session-summary");
       const savedItems = document.getElementById("saved-items");
+      const setupChecklist = document.getElementById("setup-checklist");
       const resultOutput = document.getElementById("result-output");
       const resultSummary = document.getElementById("result-summary");
       const resultItems = document.getElementById("result-items");
@@ -1372,6 +1413,74 @@
         }
 
         return [];
+      }
+
+      function renderSetupChecklist(health) {
+        if (!setupChecklist) return;
+        const setup = health.setup || {};
+        const provider = health.provider || {};
+        const sessions = health.sessions || {};
+        const localState = health.localState || {};
+        const platform = setup.platform || "";
+        const macos = platform === "darwin";
+        const items = [
+          {
+            ok: Boolean(provider.configured),
+            label: "Plaid credentials",
+            detail: provider.configured
+              ? `${provider.environment || "unknown"} · ${(provider.products || []).join(", ") || "no products"}`
+              : "Set PLAID_CLIENT_ID and the secret that matches PLAID_ENV in .env.local, then restart.",
+          },
+          {
+            ok: Boolean(sessions.hasSessions || sessions.sessionCount > 0),
+            label: "Linked institution",
+            detail:
+              sessions.sessionCount > 0
+                ? `${sessions.sessionCount} saved item(s)`
+                : "Use Connect with Plaid after credentials are configured.",
+          },
+          {
+            ok: Boolean(setup.budgetFilePresent),
+            label: "Budget file",
+            detail: setup.budgetFilePresent
+              ? "context/budgets.yml is present"
+              : "Optional: cp context/budgets.template.yml context/budgets.yml",
+          },
+          {
+            ok: macos,
+            label: "Platform (tokens)",
+            detail: macos
+              ? `macOS Keychain service ${localState.keychainServiceName || "(pending)"}`
+              : "v1 stores Plaid tokens in macOS Keychain. Linux is for development only.",
+          },
+          {
+            ok: Boolean(setup.llmConfigured),
+            label: "LLM (optional)",
+            detail: setup.llmConfigured
+              ? `Configured (${setup.llmProvider || "provider"})`
+              : "Not set. Briefings, chat, and category review stay off until you add a key.",
+            optional: true,
+          },
+          {
+            ok: (setup.bindHost || "") === "127.0.0.1" || setup.bindHost === "localhost",
+            label: "Network bind",
+            detail: `HOST=${setup.bindHost || "unknown"}${setup.lanAccessEnabled ? " · LAN code set" : " · localhost default"}`,
+          },
+        ];
+        setupChecklist.innerHTML = `<div class="setup-list">${items
+          .map(
+            (item) => `
+            <div class="setup-item">
+              <div>
+                <strong>${escapeHtml(item.label)}</strong>
+                <div class="setup-detail">${escapeHtml(item.detail)}</div>
+              </div>
+              <span class="pill ${item.ok ? "success" : item.optional ? "" : "warn"}">
+                ${item.ok ? "Ready" : item.optional ? "Optional" : "Needed"}
+              </span>
+            </div>`,
+          )
+          .join("")}</div>`;
       }
 
       function renderHealthSummary(health) {
@@ -1626,6 +1735,7 @@
         try {
           const health = await request("/api/health", { method: "GET" });
           latestHealth = health;
+          renderSetupChecklist(health);
           renderHealthSummary(health);
           syncConsentItemOptions();
           render(healthOutput, health);
@@ -2434,6 +2544,17 @@
       });
 
       connectButton.addEventListener("click", openPlaidLink);
+      const setupConnectButton = document.getElementById("setup-connect-button");
+      if (setupConnectButton) {
+        setupConnectButton.addEventListener("click", openPlaidLink);
+      }
+      const setupGotoConnect = document.getElementById("setup-goto-connect");
+      if (setupGotoConnect) {
+        setupGotoConnect.addEventListener("click", () => {
+          const btn = document.querySelector('#tab-nav button[data-tab-target="connect"]');
+          if (btn) btn.click();
+        });
+      }
       updateConsentButton.addEventListener("click", openPlaidConsentUpdate);
       refreshButton.addEventListener("click", refreshSession);
       refetchHistoryButton.addEventListener("click", refetchHistory);

@@ -1077,6 +1077,18 @@ app.get("/api/health", async (_request, response) => {
       products: config.plaid.products,
       daysRequested: config.plaid.daysRequested,
     },
+    setup: {
+      plaidConfigured: isPlaidConfigured(),
+      llmConfigured: isLlmConfigured(),
+      llmProvider: config.llm.provider,
+      budgetFilePresent: await fs
+        .access(path.resolve("context/budgets.yml"))
+        .then(() => true)
+        .catch(() => false),
+      platform: process.platform,
+      lanAccessEnabled: isLanAccessEnabled(),
+      bindHost: config.host,
+    },
     localState: {
       sessionStore,
       overrideStore,

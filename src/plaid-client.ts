@@ -80,7 +80,7 @@ function createClient(): PlaidApi {
 export async function createLinkToken(): Promise<string> {
   const client = createClient();
   const response = await client.linkTokenCreate({
-    client_name: "Budget and Expense Tracker",
+    client_name: "Local Finances Manager",
     country_codes: config.plaid.countryCodes.map(mapCountryCode),
     language: "en",
     products: config.plaid.products.map(mapProduct),
@@ -90,6 +90,9 @@ export async function createLinkToken(): Promise<string> {
     user: {
       client_user_id: PLAID_CLIENT_USER_ID,
     },
+    ...(config.plaid.redirectUri
+      ? { redirect_uri: config.plaid.redirectUri }
+      : {}),
   });
 
   return response.data.link_token;
@@ -105,7 +108,7 @@ export async function createUpdateLinkToken(accessToken: string): Promise<string
     (product) => product !== Products.Investments,
   );
   const response = await client.linkTokenCreate({
-    client_name: "Budget and Expense Tracker",
+    client_name: "Local Finances Manager",
     country_codes: config.plaid.countryCodes.map(mapCountryCode),
     language: "en",
     access_token: accessToken,

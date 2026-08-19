@@ -219,7 +219,8 @@ async function main() {
             id: "env-local",
             label: "Copy .env.example → .env.local",
             status: "pass",
-            detail: "Non-interactive (--yes). Edit Plaid Sandbox vars before npm run dev.",
+            detail:
+              "Non-interactive (--yes). Set PLAID_ENV and the matching secret (SANDBOX_PLAID_SECRET or PROD_PLAID_SECRET) before npm run dev.",
           });
         }
       } else {
@@ -234,7 +235,8 @@ async function main() {
             id: "env-local",
             label: "Copy .env.example → .env.local",
             status: "pass",
-            detail: "Edit Plaid Sandbox vars before npm run dev.",
+            detail:
+              "Set PLAID_ENV and the matching secret (SANDBOX_PLAID_SECRET or PROD_PLAID_SECRET) before npm run dev.",
           });
         } else {
           results.push({
@@ -385,7 +387,7 @@ async function main() {
   }
 
   console.log(`\n${COL.bold}── Manual steps (human)${COL.reset}`);
-  console.log(`  • ${COL.dim}Fill Plaid Sandbox vars in .env.local (minimal path can omit LLM keys).${COL.reset}`);
+  console.log(`  • ${COL.dim}Fill PLAID_ENV and the matching secret in .env.local (Sandbox first; LLM keys optional).${COL.reset}`);
   console.log(`  • ${COL.dim}npm run dev — complete Plaid Link; sync accounts.${COL.reset}`);
   console.log(`  • ${COL.dim}(Optional) Add an LLM key — category review, briefings, chat.${COL.reset}`);
 
