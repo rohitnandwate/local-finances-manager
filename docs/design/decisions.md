@@ -12,11 +12,17 @@ Decisions fall into three buckets:
 | **B. Decided, hard to reverse, low controversy** | Clear best practice. Proceeding unless you object. | Veto if you disagree. |
 | **C. Two-way doors — decided** | Cheap to change later; hidden behind interfaces. | Nothing, unless curious. |
 
-Quick reply format (from your phone): `A1: <name>, A2: rec, A3: rec, A4: rec, A5: rec, A6: rec, A7: rec, A8: rec`.
+Quick reply format (from your phone): `A1: <app name>, A2: rec, A3: rec, A4: rec, A5: rec, A6: rec, A7: rec, A8: rec`.
 
 ---
 
 ## A. One-way doors (need your go-ahead)
+
+### A0. Repository and visibility — **Approved 2026-09-29**
+
+- **Decision.** The new clients live in a **new private repo, `ScoopedOutStudios/finances-manager-apps`**. The public `rohitnandwate/local-finances-manager` repo stays as-is (the existing local web tool). The old private `budget-tracker` repo is **not** reused, to avoid carrying its history.
+- **Why.** Starting private keeps both options open (open-sourcing later with a clean history is easy; un-publishing is not). It also lowers the risk of agent-generated screenshots, logs, or fixtures leaking personal data.
+- **Costs accepted.** macOS CI minutes are metered on private repos (see implementation plan §1). Cloud agents need the Cursor GitHub App installed on the new repo.
 
 ### A1. App identity: name, bundle ID, iCloud container, Apple account type
 
@@ -112,7 +118,7 @@ The biggest decision. It sets the languages, how fast you can iterate from a pho
 
 | ID | Decision | Why |
 |----|----------|-----|
-| B1 | **Clean-slate rebuild.** The legacy Express app is reference material, not a compatibility target or test oracle. It moves to `legacy/` and is deleted once the new clients reach parity. Algorithms (transfers, recurring, rules) are re-specified and may improve. | Avoids inheriting JSON-blob storage, TSV/DuckDB analytics, and PFC coupling. |
+| B1 | **Clean-slate rebuild in the new repo.** The existing public app is reference material, not a compatibility target or test oracle; no code is copied wholesale. Algorithms (transfers, recurring, rules) are re-specified and may improve. | Avoids inheriting JSON-blob storage, TSV/DuckDB analytics, and PFC coupling. |
 | B2 | **No migration of legacy transaction data.** Re-link banks in the new apps (Plaid returns up to 24 months). An optional importer carries over **merchant rules and budgets only**. | Legacy transaction overrides are keyed to Plaid IDs that change on re-link; rules are what hold the learning. |
 | B3 | **Money is stored as signed integer minor units** (cents) + ISO currency code; **negative = money out**. Plaid's sign (positive = outflow) is flipped at ingestion. | Avoids floating-point drift in sums; matches common accounting convention. |
 | B4 | **Our own stable IDs** (UUIDv7) for accounts and transactions, alongside provider IDs, plus a **fingerprint** (account mask, date, amount, normalized description) that re-attaches user edits after a re-link or provider change. | Plaid transaction IDs change on re-link; user edits must survive. |
@@ -145,3 +151,4 @@ The biggest decision. It sets the languages, how fast you can iterate from a pho
 | Date | Decision | Outcome |
 |------|----------|---------|
 | 2026-09-29 | Register created | Awaiting owner input on A1–A8 |
+| 2026-09-29 | A0 repository | Approved: new private repo `ScoopedOutStudios/finances-manager-apps`; public repo unchanged |

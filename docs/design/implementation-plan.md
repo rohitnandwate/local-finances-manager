@@ -44,7 +44,11 @@ flowchart LR
 | Real-device feel, Face ID, Plaid Link on a phone | **You**, via TestFlight on your iPhone |
 | macOS app hands-on | Deferred until a Mac is available; until then, CI screenshots only |
 
-Because the repository is public, GitHub-hosted macOS runners are free. They are slower than Linux, so the Swift core is designed to be tested on Linux and macOS CI is reserved for app-level builds.
+The code lives in the **private** repo `ScoopedOutStudios/finances-manager-apps` ([decisions.md](./decisions.md) A0). On private repos, GitHub-hosted macOS minutes are metered (they count about 10× against the plan's monthly allowance; check the org's current plan and pricing). Budget accordingly:
+
+- Keep logic in the Swift package tested on **Linux** (cheap); run macOS jobs only for PRs touching `apps/apple`.
+- Merge Apple PRs in batches so one TestFlight build covers several changes.
+- If minutes run short: enable pay-as-you-go for Actions on the org, upgrade the org plan, or evaluate Xcode Cloud (25 compute hours/month included with Apple Developer membership; initial setup may require Xcode on a Mac).
 
 ---
 
@@ -70,7 +74,7 @@ Do these once; agents will pause and ask when one is needed. Most steps work in 
 
 ## 3. Target repository layout
 
-Clean slate ([decisions.md](./decisions.md) B1): the legacy app moves to `legacy/` (with its own CI job) and is deleted at parity. New code does not import from it.
+Clean slate ([decisions.md](./decisions.md) A0, B1): this is a new repo. The old public app is consulted as reference only; nothing is imported from it.
 
 ```
 apps/
@@ -93,8 +97,9 @@ spec/
   fixtures/              # Golden input/expected-output JSON for both cores
 tools/
   eval/                  # Classification evaluation harness
-  import-legacy/         # merchant rules + budgets.yml → .lfmbackup
-legacy/                  # Current Express app, frozen; deleted at parity
+  import-legacy/         # merchant rules + budgets.yml from the old app → .lfmbackup
+docs/
+  design/                # These design docs (decisions, design, plan)
 ```
 
 Key choice for agents without Xcode: **XcodeGen** (`project.yml`) keeps the Xcode project as reviewable text, so agents never need the Xcode GUI and merge conflicts in `.pbxproj` disappear.
@@ -105,7 +110,7 @@ Key choice for agents without Xcode: **XcodeGen** (`project.yml`) keeps the Xcod
 
 | Workflow | Runner | Trigger | Steps |
 |----------|--------|---------|-------|
-| `ci.yml` (existing) | Linux + macOS | push/PR | Secret scan; legacy typecheck/build scoped to `legacy/` until it is deleted |
+| `secrets.yml` | Linux | push/PR | gitleaks scan of tracked files + history (carried over from the old repo's setup), SHA-pinned actions |
 | `core.yml` | Linux | PR touching `packages/`, `spec/` | `swift test` for FinanceCore (Swift Linux container), `vitest` for core-ts, **both run `spec/fixtures`** |
 | `web.yml` | Linux | PR touching `apps/web`, `packages/core-ts` | Typecheck, unit tests, Playwright (mobile + desktop viewports), upload screenshots; Vercel posts a preview URL |
 | `relay.yml` | Linux | PR touching `services/relay` | Unit tests; Plaid Sandbox end-to-end (link token → sandbox public token → exchange → sync) |
@@ -144,7 +149,7 @@ You reply to [decisions.md](./decisions.md) A1–A8 (one line is enough). The ag
 | ID | Task | Lane | Acceptance (verifiable from iPhone) |
 |----|------|------|-------------------------------------|
 | 0.1 | You complete setup S1–S5 (S6–S9 can follow). | You | Secrets present. |
-| 0.2 | Scaffold the layout in §3 (empty packages build), move the current app to `legacy/` with its CI scoped there, npm workspaces for TS, `spec/schema.sql` v1. Update README/AGENTS pointers. | A | CI green; PR shows tree. |
+| 0.2 | Bootstrap the new repo: copy these design docs into `docs/design/`, add README, AGENTS.md, `.gitignore`, gitleaks config + pre-commit hook + `secrets.yml`, scaffold the layout in §3 (empty packages build), npm workspaces for TS, `spec/schema.sql` v1. | A | CI green; PR shows tree. |
 | 0.2b | Draft `spec/taxonomy.json` (~14 groups / ~70 categories, slugs, labels, descriptions written for Jev, icons, colors, Plaid-category mapping) and `spec/algorithms.md`. | A | **You approve the taxonomy (A4)** from a readable table in the PR. |
 | 0.3 | Agent environment: add the Swift Linux toolchain + SQLite to the Cloud Agent environment so agents can run `swift test`. | A | Agent PR shows `swift test` output from its VM. |
 | 0.4 | **No-laptop loop proof**: hello-world SwiftUI multiplatform app via XcodeGen; `apple.yml` builds and captures one screenshot; `testflight.yml` uploads. | B | **Gate G0**: you install the hello-world build from TestFlight on your iPhone. |
@@ -231,7 +236,7 @@ Hands-on macOS validation waits until a Mac is available (TestFlight for macOS o
 |----|------|------------|
 | 8.1 | Production readiness checklist: Plaid Production keys entered by you in-app, OAuth institutions verified, backup nudges. | **Gate G4**: you link a real bank on your phone. |
 | 8.2 | Investments port (holdings, CSV import) to the new clients. | TestFlight. |
-| 8.3 | Delete `legacy/`; update README, AGENTS.md, and runbooks for the new clients. | CI green; docs updated. |
+| 8.3 | Update README, AGENTS.md, and runbooks for the new clients; add a pointer from the old public repo's README to the new apps if desired. | CI green; docs updated. |
 
 ---
 
@@ -298,4 +303,5 @@ do on my phone to validate. Do not ask for production Plaid keys.
 | Agents can't see the simulator live | Demo-mode screenshots in every UI PR; `.xcresult` attachments; snapshot tests for key screens. |
 | Plaid Link can't be automated in UI tests | Mock transport in UI tests; real Link verified by you via TestFlight (Sandbox). |
 | Jev access delayed | Phases 1–2 do not depend on Jev; the harness runs other contenders meanwhile. |
-| Public repo leaks something | Existing gitleaks CI + pre-commit hook; fixtures are synthetic; production keys only enter the app on your device. |
+| Secrets or personal data committed | Private repo, plus gitleaks CI + pre-commit hook from day one; fixtures and screenshots use synthetic data; production keys only enter the app on your device. Keeps the option to open-source later with a clean history. |
+| macOS CI minutes run out (private repo) | Linux-first testing, path-filtered macOS jobs, batched TestFlight builds, pay-as-you-go or Xcode Cloud as fallback. |

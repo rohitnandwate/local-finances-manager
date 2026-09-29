@@ -24,7 +24,7 @@ Every decision, its reversibility, and the ones needing owner sign-off live in *
 | Cross-device **(A6)** | Transactions are not synced; each device pulls from Plaid. User-authored data syncs as an **encrypted change log** over CloudKit using one generic record type. |
 | Classification **(A5)** | A cascade: your edits and rules → your history → **Jev** (with Plaid's category as a hint) → you. **No LLM in classification by default.** Real data goes to Jev only after the evaluation gate and your opt-in. |
 | Chat, briefings | LLM for words, local SQL for numbers. BYO key (native) or via Relay (web). |
-| Legacy | Clean-slate rebuild; the legacy app moves to `legacy/` and is removed at parity. Only merchant rules and budgets are importable. |
+| Repo **(A0, approved)** | New private repo `ScoopedOutStudios/finances-manager-apps`. The public `local-finances-manager` repo stays as-is. Clean-slate rebuild; only merchant rules and budgets are importable from the old app. |
 
 ---
 
@@ -645,7 +645,7 @@ Clean slate ([decisions.md](./decisions.md) B1, B2):
 
 1. **Re-link banks in the new app.** Plaid returns up to 24 months of history on a fresh link, so transaction history is rebuilt rather than migrated.
 2. **Optional importer for what holds the learning:** merchant rules and budgets from `.data/category-overrides.json` and `context/budgets.yml`, with Plaid categories mapped onto the new taxonomy (unmappable rules land in the review queue). Per-transaction legacy overrides are not migrated; they are keyed to Plaid IDs that change on re-link.
-3. The legacy app moves to `legacy/`, stays runnable for reference until parity, then is deleted.
+3. The existing app stays in its public repo, unchanged and runnable, for as long as it's useful.
 
 ---
 
