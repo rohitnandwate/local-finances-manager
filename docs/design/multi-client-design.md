@@ -1,8 +1,10 @@
 # Multi-client design: web, macOS, iOS
 
-Status: **Proposal** · Last updated: 2026-09-29 · Companion: [implementation-plan.md](./implementation-plan.md)
+Status: **Proposal — one-way decisions awaiting owner input** · Last updated: 2026-09-29 · Companions: [decisions.md](./decisions.md), [implementation-plan.md](./implementation-plan.md)
 
-This document proposes how to evolve local-finances-manager from a single local Node/Express server + browser UI into three clients: **web**, **native macOS**, and **native iOS**. It keeps the product's core promise: financial data lives on the user's device, works offline, and is refreshed from Plaid only when the user asks.
+This document proposes three new clients for local-finances-manager: **web**, **native macOS**, and **native iOS**. It keeps the product's core promise: financial data lives on the user's device, works offline, and is refreshed from the bank data provider (Plaid) only when the user asks.
+
+The current Node/Express app is treated as **reference, not constraint**. This is a clean-slate design; where it departs from today's code, the reason is stated.
 
 It also evaluates **Jev** (TypeSafe AI's "System One" decision model) as the transaction classifier.
 
@@ -10,18 +12,19 @@ It also evaluates **Jev** (TypeSafe AI's "System One" decision model) as the tra
 
 ## 0. Decisions at a glance
 
-| # | Decision | Recommendation |
-|---|----------|----------------|
-| D1 | Where data lives | On-device **SQLite**, one shared schema across all three clients. |
-| D2 | Backend | **No backend holds user data.** An optional, stateless **Relay** exists only to hold secrets that must not ship in a client. |
-| D3 | Plaid on native | Two modes. **Direct mode** (default for personal builds): the app calls Plaid itself using the user's own keys kept in Keychain. **Relay mode**: the Relay holds the Plaid secret. Web always uses Relay mode. |
-| D4 | Cross-device | Transactions are **not** synced between devices; each device pulls from Plaid on demand. Only **user-authored data** (rules, overrides, budgets, custom categories) syncs, through **CloudKit private database with encrypted fields**. |
-| D5 | Shared logic | Two native-language implementations (**Swift** for Apple, **TypeScript** for web) held to one spec: shared SQL schema, taxonomy file, and **golden test fixtures** generated from today's TypeScript code. |
-| D6 | Apple UI | One **SwiftUI multiplatform** app (iOS + macOS targets), with platform-specific navigation. |
-| D7 | Web UI | Static **PWA** (React + Vite), SQLite-WASM persisted in OPFS, installable on iPhone home screen. |
-| D8 | Classification | A **cascade**: rules → the user's own history → Plaid category (as a signal) → **Jev** → human review. **No LLM in the classification path by default**; add one only if the evaluation shows a quality gap Jev cannot close. |
-| D9 | Other AI (chat, briefings) | Stays LLM-based (text generation is required). Numbers still come from local SQL, never from the model. |
-| D10 | AI keys | Bring-your-own keys in Keychain (native, no backend) **or** routed through the Relay / Vercel AI Gateway (required for web). |
+Every decision, its reversibility, and the ones needing owner sign-off live in **[decisions.md](./decisions.md)**. Items marked **(A#)** below are one-way doors awaiting go-ahead; the rest are decided.
+
+| Area | Recommendation |
+|------|----------------|
+| Stack **(A2)** | One **SwiftUI multiplatform** app (iOS + macOS) + a **React PWA** for web. Business logic in a Linux-testable Swift package and a TS package, both held to one spec and shared test fixtures. |
+| Data | On-device **SQLite** everywhere. Money as **integer cents** (negative = money out). Our own stable IDs + fingerprints so user edits survive bank re-links. |
+| Backend **(A3, A7)** | **No server holds user data.** Native apps run with zero servers in **Direct mode** (your Plaid keys in Keychain). A tiny stateless **Relay** exists for web (required) and optionally for native. |
+| Bank data **(A8)** | **Plaid**, behind a `BankDataProvider` interface (SimpleFIN possible later). Pulled on demand only. |
+| Categories **(A4)** | **Our own two-level taxonomy** with custom categories; Plaid's category is an input signal, not the storage format. |
+| Cross-device **(A6)** | Transactions are not synced; each device pulls from Plaid. User-authored data syncs as an **encrypted change log** over CloudKit using one generic record type. |
+| Classification **(A5)** | A cascade: your edits and rules → your history → **Jev** (with Plaid's category as a hint) → you. **No LLM in classification by default.** Real data goes to Jev only after the evaluation gate and your opt-in. |
+| Chat, briefings | LLM for words, local SQL for numbers. BYO key (native) or via Relay (web). |
+| Legacy | Clean-slate rebuild; the legacy app moves to `legacy/` and is removed at parity. Only merchant rules and budgets are importable. |
 
 ---
 
@@ -49,7 +52,7 @@ It also evaluates **Jev** (TypeSafe AI's "System One" decision model) as the tra
 
 ---
 
-## 2. Current state (what we are migrating from)
+## 2. Current state (reference only)
 
 | Concern | Today |
 |---------|-------|
@@ -60,9 +63,9 @@ It also evaluates **Jev** (TypeSafe AI's "System One" decision model) as the tra
 | Classification | Plaid PFC categories. `src/category-review.ts` sends only LOW/MEDIUM-confidence, non-transfer transactions to an LLM in batches of 200; flagged items go to a review queue. Merchant rules (`src/override-store.ts`) match on entity ID, name, and description similarity. |
 | Derived logic | Transfer pairing (`src/transfers.ts`, ±3 days, ±$0.02), recurring streams (SQL in `src/query.ts`), budget review (`src/budget-targets.ts` from `context/budgets.yml`). |
 
-What carries over conceptually: the Plaid sync model (cursor-based `transactions/sync`), the override/rule precedence, transfer and recurring algorithms, budget semantics, and the principle that "the LLM narrates, SQL computes."
+Ideas worth keeping: cursor-based `transactions/sync`, "user edits beat rules beat automation" precedence, the transfer-pairing and recurring-detection approaches, and the principle that "the LLM narrates, SQL computes."
 
-What changes: JSON blobs → SQLite; TSV/DuckDB → SQL views over the same database; the server stops being mandatory.
+Deliberately **not** carried over (see [decisions.md](./decisions.md) B1–B4, A4): JSON-blob storage, TSV/DuckDB analytics, floating-point amounts, keying user edits to Plaid transaction IDs, Plaid PFC as the storage taxonomy, and the mandatory local server. The legacy code is not a test oracle; algorithms are re-specified in `spec/` and may improve.
 
 ---
 
@@ -105,7 +108,7 @@ flowchart TB
 | Core | `FinanceCore` Swift package: pure Swift, no UIKit/AppKit, **builds and tests on Linux** | `@lfm/core` TS package: pure TS, runs in Node for tests |
 | Persistence | SQLite via GRDB | SQLite-WASM (official build) with the OPFS SAH-pool VFS |
 | Secrets | Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, optional iCloud Keychain sync) | Nothing long-lived; the Relay holds secrets and issues a session |
-| Networking | `PlaidTransport` protocol: `DirectPlaidTransport` or `RelayPlaidTransport` | `RelayPlaidTransport` only |
+| Bank data | `BankDataProvider` protocol (Plaid first; SimpleFIN possible later). Plaid has two transports: `Direct` or `Relay` | Plaid via `Relay` transport only |
 
 ---
 
@@ -146,7 +149,7 @@ Relay rules:
 
 - **Stores nothing.** No database, no body logging, no analytics on payloads. Access tokens stay on the client and are sent per request over TLS.
 - **Single-user auth.** A long random relay key, generated at setup and stored in the client's Keychain / browser credential store, plus optional passkey auth for web. Per-key rate limits.
-- **Tiny.** It reuses `src/plaid-client.ts` almost unchanged. Today's Express server effectively becomes the Relay once storage and UI move out.
+- **Tiny.** A few hundred lines, written fresh for serverless (the legacy `src/plaid-client.ts` is a useful reference for the Plaid calls).
 - Can be self-hosted by the user (their own Vercel account); the project never operates a shared instance.
 
 ### 4.3 Plaid Link specifics per platform (verify during Phase 0 spikes)
@@ -160,6 +163,24 @@ Relay rules:
 ### 4.4 Where a backend *would* earn its keep later
 
 Only if these become goals: webhook-driven background sync (Plaid `SYNC_UPDATES_AVAILABLE`), push notifications for large transactions, or distributing to other users. All three are out of scope for v1.
+
+### 4.5 Bank data provider abstraction
+
+Nothing outside the provider adapter knows about Plaid. The adapter maps provider data into our schema (our IDs, integer cents, our taxonomy via a hint mapping).
+
+```swift
+protocol BankDataProvider {
+  var id: String { get }                          // "plaid", "simplefin"
+  func beginLink() async throws -> LinkSession    // UI flow differs per provider
+  func completeLink(_ result: LinkResult) async throws -> ProviderConnection
+  func sync(_ connection: ProviderConnection,
+            cursor: String?) async throws -> SyncPage   // added / modified / removed
+  func balances(_ connection: ProviderConnection) async throws -> [AccountBalance]
+  func disconnect(_ connection: ProviderConnection) async throws
+}
+```
+
+Plaid is the v1 provider. **SimpleFIN Bridge** ($15/yr, user-owned access URL, **no developer secret**) is the notable alternative for a strictly serverless path, at the cost of no merchant enrichment/categories, 90-day request windows, and once-a-day refresh. See [decisions.md](./decisions.md) A8.
 
 ---
 
@@ -176,45 +197,64 @@ SwiftData was considered and rejected: its schema is Swift-only, SQL analytics a
 
 ### 5.2 Schema (shared `spec/schema.sql`)
 
+Conventions: IDs are UUIDv7 text generated on device; money is `INTEGER` minor units (cents) with **negative = money out**; dates are ISO `YYYY-MM-DD`; timestamps are UTC ISO-8601; category references are taxonomy slugs (e.g. `food.coffee`).
+
 ```sql
--- Plaid-sourced (re-derivable by re-syncing)
-items(item_id PK, institution_id, institution_name, cursor, status,
-      last_sync_at, last_sync_error, created_at)
-accounts(account_id PK, item_id FK, name, official_name, mask, type, subtype,
-         balance_available, balance_current, iso_currency, balances_at)
-transactions(txn_id PK, account_id FK, item_id FK, date, authorized_date,
-             name, merchant_name, merchant_entity_id, amount, iso_currency,
-             pending, pending_txn_id, payment_channel,
-             plaid_pfc_primary, plaid_pfc_detailed, plaid_pfc_confidence,
-             counterparties_json, location_json, logo_url, website,
+-- Provider-sourced (re-derivable by re-syncing)
+connections(id PK, provider, provider_item_id, institution_name, cursor,
+            status, history_days, last_sync_at, last_sync_error, created_at)
+accounts(id PK, connection_id FK, provider_account_id, name, mask,
+         type, subtype, currency, balance_available_minor,
+         balance_current_minor, balances_at)
+transactions(id PK, account_id FK, provider_txn_id, provider_pending_id,
+             fingerprint,            -- mask|date|amount|normalized description
+             date, authorized_date, amount_minor, currency, pending,
+             description_raw, merchant_name, merchant_key,  -- normalized merchant
+             channel, provider_category, provider_category_confidence,
+             logo_url, city, region, country,
              removed_at, first_seen_at, updated_at)
 
 -- Classification (append-only decision log)
-classifications(id PK, txn_id FK, source,      -- rule|override|memory|plaid|jev|llm|on_device|user
-                primary_cat, detailed_cat, confidence,
-                alternatives_json, model_version, created_at)
+classifications(id PK, txn_id FK, source,  -- user|rule|memory|jev|on_device|llm|provider
+                category, group_id, confidence, alternatives_json,
+                model_version, created_at)
 
--- User-authored (synced across Apple devices via CloudKit)
-categories(cat_id PK, parent_id, label, description, pfc_mapping, is_custom, sort)
-merchant_rules(rule_id PK, merchant_entity_id, merchant_name_norm,
-               match_description, detailed_cat, created_at, updated_at)
-txn_overrides(txn_id PK, detailed_cat, note, tags_json, updated_at)
-budgets(budget_id PK, cat_id, amount, cadence, effective_start, effective_end, note)
-settings(key PK, value_json)
+-- User-authored (synced via the encrypted change log, §6.2)
+categories(slug PK, group_slug, label, description, icon, color,
+           is_custom, archived, sort)
+merchant_rules(id PK, merchant_key, description_pattern, category,
+               created_at, updated_at)
+txn_edits(txn_fingerprint PK, category, note, tags_json,
+          exclude_from_budgets, updated_at)
+budgets(id PK, category_or_group, amount_minor, cadence,
+        effective_start, effective_end, note, updated_at)
+settings(key PK, value_json, updated_at)
+change_log(seq PK, entity, entity_id, op, payload_json, device_id,
+           hlc_timestamp, synced_at)
 
 -- Derived (recomputed after each sync; never synced)
-transfer_pairs(txn_id PK, pair_txn_id, kind)   -- internal_transfer | cc_payment
-recurring_streams(stream_key PK, ..., is_active, frequency, avg_amount)
-review_queue(txn_id PK, reason, suggested_cat, confidence, alternatives_json)
+transfer_pairs(txn_id PK, pair_txn_id, kind)   -- internal_transfer | card_payment
+recurring_streams(key PK, merchant_key, frequency, avg_amount_minor,
+                  next_expected, is_active, is_subscription)
+review_queue(txn_id PK, reason, suggested_category, confidence,
+             alternatives_json)
 
--- Observability
-ai_calls(id PK, provider, purpose, input_tokens, cost_usd, latency_ms, created_at)
-eval_results(run_id, txn_id, truth_cat, predicted_cat, confidence, source)
+-- Observability (local only)
+ai_calls(id PK, provider, purpose, input_tokens, cost_usd_micros,
+         latency_ms, created_at)
+eval_results(run_id, txn_id, truth_category, predicted_category,
+             confidence, source)
 ```
 
-A view `v_txn_effective` resolves the final category with explicit precedence: **user override → merchant rule → accepted AI suggestion → Plaid** (same order as today), and joins transfer flags. Budgets, charts, exports, and the chat tool all read from this view.
+Changes from the legacy data model, and why:
 
-Keep raw Plaid JSON out of the main table (store only mapped columns) to limit what sits on disk.
+- **User edits are keyed by fingerprint, not by the provider's transaction ID.** Plaid transaction IDs change when a bank is re-linked; fingerprints let edits re-attach automatically (with a review prompt on ambiguous matches).
+- **Merchant rules key on a normalized `merchant_key`** (provider entity ID when present, else a normalized name) rather than name + entity ID pairs.
+- **The provider's category is one input column**, not the category of record.
+
+A view `v_txn_effective` resolves the final category with explicit precedence: **your edit → merchant rule → personal memory → accepted classifier result → provider hint**, and joins transfer flags. Budgets, charts, exports, and the chat tool all read from this view.
+
+Raw provider JSON is not stored; only mapped columns, to limit what sits on disk.
 
 ### 5.3 Security at rest
 
@@ -263,10 +303,17 @@ sequenceDiagram
 |------|--------|-----|
 | Transactions, accounts, balances | **No** (default) | Each device syncs from Plaid independently. Cursors are per device. Plaid bills per Item, not per call, so this adds no cost. |
 | Plaid access tokens | Optional | iCloud Keychain (`kSecAttrSynchronizable`) so the Mac can sync items linked on the iPhone without re-linking. |
-| Rules, overrides, budgets, categories, settings | **Yes** | CloudKit private database, custom zone, all payload fields in `encryptedValues` (end-to-end encrypted). Conflict rule: last-writer-wins per record using `updated_at`. |
-| Web ↔ Apple | Manual | Encrypted `.lfmbackup` import/export (e.g. via iCloud Drive / Files). |
+| Rules, edits, budgets, categories, settings | **Yes** | Encrypted change log (below). |
+| Web ↔ Apple | Manual in v1 | Encrypted `.lfmbackup` import/export; later, the same change log through a web-reachable store. |
 
-Option (not default): also sync transactions through CloudKit encrypted fields, for users who want one device to be the only one talking to Plaid.
+**Encrypted change log (recommended; [decisions.md](./decisions.md) A6).** Every user-authored write also appends a row to `change_log` (entity, id, operation, payload, device ID, hybrid logical clock timestamp). Sync pushes and pulls these entries:
+
+- **Transport v1: CloudKit private database**, custom zone, **one generic record type** (`ChangeEntry`) whose payload lives entirely in `encryptedValues`. CloudKit's production schema is permanent (record types and fields can never be removed or renamed), so keeping it to a single opaque record type means the schema never has to change as the app evolves.
+- **Conflicts:** last-writer-wins per entity by hybrid logical clock. This is sufficient for a single user editing on a couple of devices; no CRDTs.
+- **Compaction:** periodic snapshot entries so a new device doesn't replay the full history.
+- **Portability:** because the payload is our own format, the same log could later sync through a file in iCloud Drive or a user-owned S3 bucket, letting the web client join without changing data formats.
+
+Option (not default): sync transactions through the same log, so only one device talks to Plaid.
 
 ---
 
@@ -274,11 +321,13 @@ Option (not default): also sync transactions through CloudKit encrypted fields, 
 
 | Option | Verdict |
 |--------|---------|
-| **A. Swift + TypeScript implementations, one spec + golden fixtures** | **Recommended.** Logic is small (transfers ~250 LOC, recurring ~150, rules ~200, budgets ~500). Each side stays idiomatic. Swift core builds on Linux, so cloud agents can test it without a Mac. |
+| **A. Swift + TypeScript implementations, one spec + golden fixtures** | **Recommended.** Core logic is modest (sync mapping, rules, transfers, recurring, budgets, cascade: roughly 2–3k lines per language). Each side stays idiomatic. Swift core builds on Linux, so cloud agents can test it without a Mac. |
 | B. Rust core via UniFFI (Swift) + wasm-bindgen (web) | Single source, but adds a third language, FFI build complexity on macOS CI, and slower agent iteration. Revisit only if logic grows substantially. |
 | C. TypeScript core run in JavaScriptCore on Apple | Awkward debugging, poor typing across the bridge, fights the platform. |
 
-**Conformance suite (`spec/fixtures/`)**: JSON inputs (synthetic transactions) and expected outputs for transfer pairing, recurring detection, rule matching (including the 0.45 description-similarity threshold), budget math, and effective-category resolution. **Generate the first expected outputs by running today's TypeScript modules**, so the current behavior is the oracle. Both `swift test` and `vitest` must pass the same fixtures in CI.
+**Conformance suite (`spec/fixtures/`)**: JSON inputs (synthetic transactions) and expected outputs for provider mapping, transfer pairing, recurring detection, rule matching, fingerprint re-attachment, budget math, and effective-category resolution. Expected outputs are **authored from the written spec in `spec/algorithms.md`**, not generated from legacy code, so we can fix legacy quirks deliberately (the legacy modules are consulted as reference). Both `swift test` and `vitest` must pass the same fixtures in CI.
+
+The stack itself (SwiftUI + web vs. Expo/React Native vs. a Rust core) is a one-way door; the comparison is in [decisions.md](./decisions.md) A2.
 
 ---
 
@@ -296,7 +345,7 @@ Option (not default): also sync transactions through CloudKit encrypted fields, 
 
 | Property of our task | Jev fit |
 |----------------------|---------|
-| Closed taxonomy: Plaid PFC has 16 primaries and roughly 100+ detailed categories | **Good.** Fits in one choice question, or in a primary + detailed "fan-out" within one request. |
+| Closed taxonomy: our own ~14 groups / ~70 categories plus custom categories ([decisions.md](./decisions.md) A4) | **Good.** Fits in one choice question (reliable to ~240 options), or a group + category "fan-out" within one request. |
 | Short, cryptic text (`SQ *BLUE BOTTLE 0423 OAKLAND CA`) that needs world knowledge about merchants | **Probably good, unproven.** This is semantic recognition, not arithmetic. |
 | Must never invent a category | **Strong.** Output is always one of our options. |
 | Need confidence to decide auto-accept vs review | **Strong on paper.** Calibration is vendor-claimed, not independently published. We must measure it ourselves. |
@@ -310,7 +359,7 @@ Option (not default): also sync transactions through CloudKit encrypted fields, 
 
 Published evidence is mixed: on TypeSafe's own 711-case dashboard (scored against GPT/Claude reference labels, not ground truth) Jev averaged 67.8% agreement vs 74.1% for the best LLM, while being about 100× cheaper and about 50× faster. It was close on routing-like tasks (customer service 76.0% vs 78.3%) and far behind on invoice processing (61.8% vs 79.1%). Transaction categorization is closer to routing than to invoice extraction, which is encouraging but not proof.
 
-**Conclusion:** Jev is a strong candidate for the classifier **if it beats Plaid's own category on the user's data** at the confidence thresholds we choose. Treat that as a gate to measure in Phase 0, not as an assumption. **Plaid's PFC is the real baseline to beat, not an LLM.** Plaid already assigns a category and confidence to every transaction for free, and it is usually right when it says HIGH/VERY_HIGH.
+**Conclusion:** Jev is a strong candidate for the classifier **if it beats Plaid's category (mapped onto our taxonomy) on the user's data** at the confidence thresholds we choose. Treat that as a gate to measure in Phase 0, not as an assumption. **Plaid's category is the real baseline to beat, not an LLM.** Plaid already assigns a category and confidence to every transaction for free, and it is usually right when it says HIGH/VERY_HIGH. Owning our taxonomy changes the calculus in Jev's favor: Plaid can only be mapped onto our categories approximately and can't classify into custom ones at all.
 
 ### 8.3 Do we need an LLM alongside Jev?
 
@@ -318,7 +367,7 @@ For classification: **probably not.**
 
 - The escalation target for low-confidence cases should be **the user**, not a bigger model. Personal volume is tiny (tens of reviews per week), the user is ground truth, and every answer becomes a rule that removes future work.
 - An LLM escalation step adds cost, latency, a second vendor receiving the data, and non-determinism, in exchange for maybe a few more auto-accepted rows.
-- **Re-open this only if** the Phase 0 evaluation shows the "roll up to primary / send to review" band is large (say >15% of new transactions) *and* an LLM resolves a meaningful share of it correctly.
+- **Re-open this only if** the Phase 0 evaluation shows the "roll up to group / send to review" band is large (say >15% of new transactions) *and* an LLM resolves a meaningful share of it correctly.
 
 LLMs remain the right tool for **chat and briefings**, which must produce language (§9).
 
@@ -328,22 +377,22 @@ Every new or modified transaction goes through the stages in order; the first co
 
 | # | Stage | Where it runs | Output |
 |---|-------|---------------|--------|
-| 1 | **User override** on this transaction | Local | Final |
-| 2 | **Merchant rule** (entity ID / normalized name / description similarity, as today) | Local | Final |
-| 3 | **Personal memory**: the user previously confirmed a category for this normalized merchant key ≥ 2 times with no conflicts | Local | Final (confidence 0.99) |
-| 4 | **Transfer / card-payment detection** (code, §2) | Local | Tags `is_internal_transfer`; excluded from spend |
-| 5 | **Jev** (if enabled and online) | Cloud | Choice + confidence + alternatives |
-| 6 | **Offline fallback**: on-device model (Apple Foundation Models on supported hardware) or Plaid's category, marked "unverified" and queued for Jev on the next online sync | Local | Provisional |
-| 7 | **Review queue** | UI | User decides, can create a rule |
+| 1 | **Your edit** on this transaction (matched by fingerprint) | Local | Final |
+| 2 | **Merchant rule** (merchant key, optional description pattern) | Local | Final |
+| 3 | **Personal memory**: you confirmed a category for this merchant key ≥ 2 times with no conflicts | Local | Final (confidence 0.99) |
+| 4 | **Transfer / card-payment detection** (code) | Local | Tags internal transfers; excluded from spend |
+| 5 | **Jev** (if enabled, opted in, and online) | Cloud | Choice + confidence + alternatives |
+| 6 | **Offline fallback**: on-device model (Apple Foundation Models on supported hardware) or the provider's category mapped onto our taxonomy, marked "unverified" and queued for Jev on the next online sync | Local | Provisional |
+| 7 | **Review queue** | UI | You decide; one tap can create a rule |
 
-Where Plaid's category enters: it is always stored, is the effective category until a better decision exists, and is **passed to Jev as a hint** in one of two A/B variants (see 8.6).
+Where Plaid's category enters: it is always stored as `provider_category`, maps to a provisional category until a better decision exists, and is **passed to Jev as a hint** in one of two A/B variants (see 8.6).
 
 **Two policies to choose between after evaluation:**
 
-- **P1 — Gap filler.** Jev only sees transactions where Plaid confidence is below HIGH. Least data leaves the device. Similar to today's LLM review scope.
-- **P2 — Primary classifier.** Jev classifies every transaction not already decided by stages 1–3. Required if the user wants **custom categories** (e.g. "Kids", "Work reimbursable", "Coffee" split from "Restaurants") because Plaid does not know them. Plaid–Jev disagreement at high confidence becomes a review signal.
+- **P1 — Gap filler.** Accept the mapped Plaid category when Plaid says HIGH/VERY_HIGH *and* the mapping to our taxonomy is one-to-one; Jev handles the rest. Less data leaves the device.
+- **P2 — Primary classifier.** Jev classifies every transaction not already decided by stages 1–3. Needed for **custom categories** (e.g. "Kids", "Work reimbursable") because Plaid does not know them. Plaid–Jev disagreement at high confidence becomes a review signal.
 
-Recommendation: ship with **P2 in shadow mode** (compute, don't apply) during evaluation, then pick based on measured results. Custom categories are the most compelling reason to put Jev in the product at all.
+Recommendation: run **P2 in shadow mode** (compute, don't apply) during evaluation, then pick based on measured results. With our own taxonomy, P2 is the likely outcome.
 
 ### 8.5 Jev request design
 
@@ -359,24 +408,24 @@ One request per transaction (batching several transactions in one state repeats 
     "direction": "outflow",
     "amount_band": "under $20",
     "counterparty_type": "merchant",
-    "bank_suggestion": "FOOD_AND_DRINK_COFFEE (low confidence)"
+    "bank_suggestion": "Coffee (low confidence)"
   },
   "questions": {
-    "primary": {
+    "group": {
       "type": "choice",
-      "instructions": "Which spending category best describes this bank transaction?",
-      "criteria": { "FOOD_AND_DRINK": "Restaurants, cafes, groceries, bars", "...": "...", "OTHER": "None of these fit" }
+      "instructions": "Which spending group best describes this bank transaction?",
+      "criteria": { "food": "Groceries, restaurants, cafes, bars, delivery", "...": "...", "other": "None of these fit" }
     },
-    "detailed_FOOD_AND_DRINK": {
+    "category_food": {
       "type": "choice",
-      "instructions": "Assuming this is food and drink, which subcategory?",
-      "criteria": { "FOOD_AND_DRINK_COFFEE": "Coffee shops and cafes", "...": "..." }
+      "instructions": "Assuming this is food, which category?",
+      "criteria": { "food.coffee": "Coffee shops and cafes", "food.groceries": "Supermarkets including Costco", "...": "..." }
     }
   }
 }
 ```
 
-- **Speculative fan-out**: ask the primary question plus every primary's detailed question in the same request, then keep the detailed answer that matches the chosen primary. One round trip gives both levels and enables roll-up.
+- **Speculative fan-out**: ask the group question plus every group's category question in the same request, then keep the category answer that matches the chosen group. One round trip gives both levels and enables roll-up.
 - **Always include an `OTHER` option** so "none fit" is a routable answer instead of a confident wrong one.
 - **Data minimization**: no account IDs, account names, exact amounts, dates, or locations beyond city. Amount is bucketed (Jev is weak with numbers anyway). The Settings screen shows the exact payload for any transaction.
 - **Personalization without fine-tuning**: user-edited category descriptions go straight into `criteria` (for example "Groceries: supermarkets **including Costco**"). Corrections that reveal a confusing boundary should be fixed by editing descriptions.
@@ -384,20 +433,20 @@ One request per transaction (batching several transactions in one state repeats 
 
 **Decision thresholds** (starting values, tuned by the evaluation):
 
-| Detailed confidence | Action |
+| Category confidence | Action |
 |---------------------|--------|
-| ≥ 0.90 | Auto-accept detailed category |
-| 0.60–0.90, primary ≥ 0.90 | Accept the **primary** (roll up); mark "refine?" (low-priority review) |
+| ≥ 0.90 | Auto-accept the category |
+| 0.60–0.90, group ≥ 0.90 | Accept the **group** (roll up); mark "refine?" (low-priority review) |
 | Otherwise, or `OTHER` chosen | Review queue with top-3 alternatives |
 
 ### 8.6 Evaluation harness (the gate)
 
 Build before shipping Jev to the UI (Phase 0 in the plan).
 
-- **Dataset**: (a) Plaid Sandbox transactions; (b) a hand-labeled synthetic set of ~400 realistic bank descriptors covering every PFC detailed category plus hard cases (Venmo, Amazon, Costco, Apple.com/bill, ACH payroll, Zelle); (c) later, on-device, the user's own accepted overrides and rules as ground truth. Real user data never leaves the device for evaluation; the harness runs locally and stores results in `eval_results`.
-- **Contenders**: Plaid PFC alone · Jev (with and without the `bank_suggestion` hint) · Jev + roll-up · an LLM with structured output (today's approach) · Apple Foundation Models on-device (guided generation) · local memory/k-NN over the user's history.
+- **Dataset**: (a) Plaid Sandbox transactions; (b) a hand-labeled synthetic set of ~400 realistic bank descriptors covering every category in our taxonomy plus hard cases (Venmo, Amazon, Costco, Apple.com/bill, ACH payroll, Zelle); (c) later, on-device, the user's own accepted overrides and rules as ground truth. Real user data never leaves the device for evaluation; the harness runs locally and stores results in `eval_results`.
+- **Contenders**: Plaid's category mapped onto our taxonomy · Jev (with and without the `bank_suggestion` hint) · Jev + roll-up · an LLM with structured output (today's approach) · Apple Foundation Models on-device (guided generation) · local memory/k-NN over the user's history.
 - **Metrics**: detailed and primary accuracy; **coverage at 95% precision** (share of transactions that can be auto-accepted while staying 95% correct); calibration (reliability buckets); review-queue size per 100 transactions; p50/p95 latency; cost per 1,000.
-- **Ship Jev by default only if** it beats Plaid PFC on coverage-at-95%-precision by a meaningful margin (proposed: ≥10 points) on the labeled set. Otherwise keep Jev as an optional provider and rely on rules + memory + Plaid.
+- **Ship Jev by default only if** it beats mapped Plaid categories on coverage-at-95%-precision by a meaningful margin (proposed: ≥10 points) on the labeled set. Otherwise keep Jev as an optional provider and rely on rules + memory + Plaid.
 
 ### 8.7 Other Jev uses worth trying (cheap, typed decisions)
 
@@ -414,7 +463,7 @@ protocol TransactionClassifier {
   func classify(_ inputs: [ClassificationInput],
                 taxonomy: Taxonomy) async throws -> [ClassificationResult]
 }
-// ClassificationResult: detailed, primary, confidence, alternatives[(cat, p)], modelVersion
+// ClassificationResult: category, group, confidence, alternatives[(slug, p)], modelVersion
 ```
 
 The same shape exists in TypeScript. Providers are swappable in Settings, so losing Jev access degrades gracefully to Plaid + rules + memory.
@@ -522,8 +571,8 @@ The same shape exists in TypeScript. Providers are swappable in Settings, so los
 │ Note  ______________________ │
 │ Tags  [+ reimbursable]       │
 │                              │
-│ Bank said: FOOD_AND_DRINK    │
-│ (low) · Why am I seeing this?│
+│ Bank said: Food & drink (low)│
+│ Why am I seeing this?        │
 └──────────────────────────────┘
 ```
 
@@ -583,7 +632,7 @@ The same shape exists in TypeScript. Providers are swappable in Settings, so los
 ### 10.5 Design system
 
 - **Tokens** in one `spec/design-tokens.json` (color, spacing, radii, type scale) → generated into Swift (`Color`/`Font` extensions) and CSS variables.
-- **Category identity**: one color + SF Symbol per PFC primary (web uses a matching Lucide icon), stored in `spec/taxonomy.json` with labels and the descriptions that also feed Jev.
+- **Category identity**: one color per group and one SF Symbol per category (web uses a matching Lucide icon), stored in `spec/taxonomy.json` with labels and the descriptions that also feed Jev. Custom categories pick from the same palette and icon set.
 - **Amounts**: outflows in primary text color (not red; spending is normal), inflows in green with a "+", transfers in secondary color with a ↔ glyph and "excluded" label.
 - **Provenance badges**: `You` · `Rule` · `Jev 0.94` · `Bank` · `Review`. Confidence is shown as a number only in detail views, and as a subtle dot in lists.
 - **Accessibility**: Dynamic Type, VoiceOver labels that read amounts as "spent 18 dollars at KJ Market", sufficient contrast in both appearances, no color-only signals.
@@ -592,9 +641,11 @@ The same shape exists in TypeScript. Providers are swappable in Settings, so los
 
 ## 11. Migration from the current app
 
-1. A one-time **importer** reads `.data/plaid-session.json`, `.data/category-overrides.json`, and `context/budgets.yml` and writes a `.lfmbackup` (runs as a Node script on the user's Mac, or inside the new macOS app).
-2. **Access tokens**: the importer can optionally include Keychain tokens in the encrypted backup so existing Plaid Items keep working without re-linking (each re-link creates a new billed Item). If skipped, use Plaid update mode or re-link.
-3. The legacy Express server stays runnable until the new clients reach parity, then shrinks into the Relay.
+Clean slate ([decisions.md](./decisions.md) B1, B2):
+
+1. **Re-link banks in the new app.** Plaid returns up to 24 months of history on a fresh link, so transaction history is rebuilt rather than migrated.
+2. **Optional importer for what holds the learning:** merchant rules and budgets from `.data/category-overrides.json` and `context/budgets.yml`, with Plaid categories mapped onto the new taxonomy (unmappable rules land in the review queue). Per-transaction legacy overrides are not migrated; they are keyed to Plaid IDs that change on re-link.
+3. The legacy app moves to `legacy/`, stays runnable for reference until parity, then is deleted.
 
 ---
 
@@ -603,7 +654,8 @@ The same shape exists in TypeScript. Providers are swappable in Settings, so los
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Jev access is waitlisted or terms change | Classifier unavailable | Provider interface; Plaid + rules + memory remain a complete fallback; LLM provider available. |
-| Jev does not beat Plaid PFC on real data | Little value added | Evaluation gate in Phase 0; ship Jev only for custom categories or not at all. |
+| Jev does not beat mapped Plaid categories on real data | Little value added | Evaluation gate in Phase 0; ship Jev only for custom categories or not at all. |
+| Taxonomy or sync format needs a breaking change after release | Migration on every device | Owner review of `spec/taxonomy.json` before anything depends on it; one generic CloudKit record type; versioned change-log payloads. |
 | Plaid secret on device (Direct mode) | Key exposure if device compromised | Keychain + biometric gate; Relay mode for any distributed build; documented clearly. |
 | Plaid OAuth redirect requirements on iOS/macOS | Some banks fail to link | Spike in Phase 0; static `apple-app-site-association` hosting; Hosted Link fallback. |
 | Web storage is unencrypted and evictable | Data loss / exposure | Optional passphrase encryption, `navigator.storage.persist()`, backup nudges. |
@@ -612,8 +664,7 @@ The same shape exists in TypeScript. Providers are swappable in Settings, so los
 
 **Open questions for the owner**
 
-1. Do you want **custom categories** beyond Plaid's taxonomy? (This is the strongest reason for Jev policy P2.)
-2. Is Direct mode (your Plaid secret on your own devices) acceptable for personal use, or should native also default to the Relay?
-3. Should transactions ever sync between devices via CloudKit, or stay strictly "each device pulls from Plaid"?
-4. Is the web client a first-class daily client or a secondary/fallback client? (This affects how much to invest in web-side encryption and offline support.)
-5. Are investments part of v1 on the new clients, or v2?
+One-way decisions needing a go-ahead are in [decisions.md](./decisions.md) (A1–A8). Two reversible scoping questions remain:
+
+1. Is the web client a first-class daily client or a secondary/fallback client? (Affects how much to invest in web-side encryption, offline support, and web sync.)
+2. Are investments part of v1 on the new clients, or v2?

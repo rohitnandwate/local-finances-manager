@@ -12,6 +12,7 @@ Design proposals:
 
 | Doc | Purpose |
 |-----|---------|
+| [design/decisions.md](./design/decisions.md) | Decision register: one-way doors awaiting owner sign-off, decided items |
 | [design/multi-client-design.md](./design/multi-client-design.md) | Web, macOS, and iOS clients: storage, Plaid, sync, Jev classification, UI |
 | [design/implementation-plan.md](./design/implementation-plan.md) | Phased plan for building the clients with cloud agents, validated from an iPhone |
 

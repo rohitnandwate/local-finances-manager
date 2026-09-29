@@ -1,6 +1,8 @@
 # Implementation plan: building the three clients with cloud agents
 
-Status: **Proposal** · Last updated: 2026-09-29 · Design: [multi-client-design.md](./multi-client-design.md)
+Status: **Proposal** · Last updated: 2026-09-29 · Design: [multi-client-design.md](./multi-client-design.md) · Decisions: [decisions.md](./decisions.md)
+
+The plan assumes the recommended options in [decisions.md](./decisions.md). One-way decisions (A1–A8) gate specific tasks. Agents may start reversible work before sign-off but must not cross a gated step until you approve it (§5, "Phase −1").
 
 This plan assumes:
 
@@ -68,7 +70,7 @@ Do these once; agents will pause and ask when one is needed. Most steps work in 
 
 ## 3. Target repository layout
 
-The legacy server stays at the repo root and keeps working until parity. New code lives alongside it.
+Clean slate ([decisions.md](./decisions.md) B1): the legacy app moves to `legacy/` (with its own CI job) and is deleted at parity. New code does not import from it.
 
 ```
 apps/
@@ -87,11 +89,12 @@ spec/
   schema.sql             # Shared SQLite schema + migrations
   taxonomy.json          # Categories, descriptions (also Jev criteria), colors, icons
   design-tokens.json     # Colors, type, spacing → generated Swift + CSS
+  algorithms.md          # Written spec: mapping, transfers, recurring, rules, fingerprints, budgets
   fixtures/              # Golden input/expected-output JSON for both cores
 tools/
   eval/                  # Classification evaluation harness
-  import-legacy/         # .data/* + budgets.yml → .lfmbackup
-src/, public/            # Legacy Express app (becomes services/relay over time)
+  import-legacy/         # merchant rules + budgets.yml → .lfmbackup
+legacy/                  # Current Express app, frozen; deleted at parity
 ```
 
 Key choice for agents without Xcode: **XcodeGen** (`project.yml`) keeps the Xcode project as reviewable text, so agents never need the Xcode GUI and merge conflicts in `.pbxproj` disappear.
@@ -102,7 +105,7 @@ Key choice for agents without Xcode: **XcodeGen** (`project.yml`) keeps the Xcod
 
 | Workflow | Runner | Trigger | Steps |
 |----------|--------|---------|-------|
-| `ci.yml` (existing) | Linux + macOS | push/PR | Secret scan, legacy typecheck/build (keep as is) |
+| `ci.yml` (existing) | Linux + macOS | push/PR | Secret scan; legacy typecheck/build scoped to `legacy/` until it is deleted |
 | `core.yml` | Linux | PR touching `packages/`, `spec/` | `swift test` for FinanceCore (Swift Linux container), `vitest` for core-ts, **both run `spec/fixtures`** |
 | `web.yml` | Linux | PR touching `apps/web`, `packages/core-ts` | Typecheck, unit tests, Playwright (mobile + desktop viewports), upload screenshots; Vercel posts a preview URL |
 | `relay.yml` | Linux | PR touching `services/relay` | Unit tests; Plaid Sandbox end-to-end (link token → sandbox public token → exchange → sync) |
@@ -121,24 +124,40 @@ Useful conventions:
 
 Each task below is sized for **one agent → one PR**. Tasks in the same "lane" run sequentially; different lanes can run in parallel agents. **Gates** are decision points where you review results before continuing.
 
+### Phase −1 — Decision sign-off
+
+You reply to [decisions.md](./decisions.md) A1–A8 (one line is enough). The agent records outcomes in the register's log. What each decision blocks:
+
+| Decision | Blocks until approved | Can proceed before approval |
+|----------|-----------------------|-----------------------------|
+| A1 App identity | 0.4 (first TestFlight build), 6.1 (iCloud container) | Everything not touching Apple identifiers |
+| A2 Stack | 0.4, Phase 1 cores, all app phases | 0.5 (eval harness is standalone), 0.6a (Relay spike) |
+| A3 Distribution scope | 8.1 (production) | Everything else |
+| A4 Taxonomy | 0.5 final labels, 1.3 cascade, anything storing categories | 0.2b drafts `taxonomy.json` **for your review** |
+| A5 Real data to cloud AI | 3.2 enabling Jev on real data | 0.5 (synthetic + Sandbox only), 3.1 (built but off) |
+| A6 Sync design | 6.1 | Everything else (change log table exists from 1.1 regardless) |
+| A7 Plaid secret placement | 2.2 default transport | Both transports can be built |
+| A8 Bank data provider | 1.2 provider adapter | Provider interface design |
+
 ### Phase 0 — Foundations and spikes
 
 | ID | Task | Lane | Acceptance (verifiable from iPhone) |
 |----|------|------|-------------------------------------|
 | 0.1 | You complete setup S1–S5 (S6–S9 can follow). | You | Secrets present. |
-| 0.2 | Scaffold the layout in §3 (empty packages build), npm workspaces for TS, `spec/` with `schema.sql` v1 and `taxonomy.json` (PFC primaries + detailed, with descriptions). Update README/AGENTS pointers. | A | CI green; PR shows tree. |
+| 0.2 | Scaffold the layout in §3 (empty packages build), move the current app to `legacy/` with its CI scoped there, npm workspaces for TS, `spec/schema.sql` v1. Update README/AGENTS pointers. | A | CI green; PR shows tree. |
+| 0.2b | Draft `spec/taxonomy.json` (~14 groups / ~70 categories, slugs, labels, descriptions written for Jev, icons, colors, Plaid-category mapping) and `spec/algorithms.md`. | A | **You approve the taxonomy (A4)** from a readable table in the PR. |
 | 0.3 | Agent environment: add the Swift Linux toolchain + SQLite to the Cloud Agent environment so agents can run `swift test`. | A | Agent PR shows `swift test` output from its VM. |
 | 0.4 | **No-laptop loop proof**: hello-world SwiftUI multiplatform app via XcodeGen; `apple.yml` builds and captures one screenshot; `testflight.yml` uploads. | B | **Gate G0**: you install the hello-world build from TestFlight on your iPhone. |
-| 0.5 | **Jev evaluation harness** (`tools/eval`): labeled synthetic dataset (~400 descriptors), Plaid Sandbox transactions, contenders (Plaid PFC, Jev ± bank hint, Jev + roll-up, LLM structured output), metrics (accuracy, coverage at 95% precision, calibration, latency, cost). Report as markdown in the PR. | C | **Gate G1**: you read the report and choose policy P1/P2 or "no Jev" (design §8.4, §8.6). |
+| 0.5 | **Jev evaluation harness** (`tools/eval`): labeled synthetic dataset (~400 descriptors), Plaid Sandbox transactions, contenders (Plaid category mapped to our taxonomy, Jev ± bank hint, Jev + roll-up, LLM structured output), metrics (accuracy, coverage at 95% precision, calibration, latency, cost). Report as markdown in the PR. | C | **Gate G1**: you read the report and choose policy P1/P2 or "no Jev" (design §8.4, §8.6). |
 | 0.6 | **Plaid spikes**: (a) minimal Relay deployed to Vercel preview with Sandbox; (b) LinkKit in the hello-world iOS app linking the Sandbox OAuth test institution; (c) Hosted Link + `/link/token/get` feasibility note for macOS. | D (after 0.4 for b) | **Gate G2**: you link a Sandbox bank (`user_good` / `pass_good`) inside the TestFlight build. |
-| 0.7 | **Golden fixtures**: run today's TS modules (`transfers.ts`, recurring SQL, rule matching, budget review) on synthetic inputs and commit expected outputs to `spec/fixtures`. | A | Fixture files + generator script; CI runs it. |
+| 0.7 | **Golden fixtures** authored from `spec/algorithms.md` (provider mapping, transfers, recurring, rules, fingerprint re-attachment, budgets, effective category). Legacy modules consulted only to spot cases worth covering. | A | Fixture files reviewed in PR; CI validates their format. |
 
 ### Phase 1 — Shared spec and cores (lanes run in parallel)
 
 | ID | Task | Lane | Acceptance |
 |----|------|------|------------|
 | 1.1 | FinanceCore: SQLite (GRDB) migrations from `schema.sql`, repositories, `v_txn_effective`. | A | `swift test` green on Linux. |
-| 1.2 | FinanceCore: Plaid sync engine against a `PlaidTransport` protocol (added/modified/removed, cursor, pending→posted, removed soft-delete), with a mock transport and recorded Sandbox responses. | A | Tests replay recorded Sandbox pages. |
+| 1.2 | FinanceCore: `BankDataProvider` interface + Plaid adapter with Direct/Relay transports (added/modified/removed, cursor, pending→posted, soft-delete, sign flip to integer cents, fingerprints), with a mock transport and recorded Sandbox responses. | A | Tests replay recorded Sandbox pages. |
 | 1.3 | FinanceCore: rules, transfers, recurring, budgets, classification cascade (stages 1–4, 6–7; Jev stubbed). | A | Passes `spec/fixtures`. |
 | 1.4 | core-ts: same as 1.1–1.3 for SQLite-WASM (tests in Node). | E | Passes the same fixtures. |
 | 1.5 | `design-tokens.json` → generated Swift + CSS; category icon/color map. | F | Generated files committed; preview image of palette. |
@@ -162,11 +181,11 @@ Each task below is sized for **one agent → one PR**. Tasks in the same "lane" 
 | ID | Task | Acceptance |
 |----|------|------------|
 | 3.1 | `JevClassifier` in Swift and TS: fan-out request, `OTHER` option, minimized payload, pinned version, retries honoring `retry-after`, concurrency limit. | Unit tests with recorded responses; live smoke in agent VM. |
-| 3.2 | Thresholds, roll-up, review routing; shadow mode (log only) behind a setting. | Review inbox shows top-3 alternatives with confidence. |
+| 3.2 | Thresholds, roll-up, review routing; shadow mode (log only) behind a setting. Real data is sent only after A5 approval and in-app opt-in. | Review inbox shows top-3 alternatives with confidence. |
 | 3.3 | AI settings: provider switch, BYO key, thresholds preset, "What gets sent" preview, usage/cost. | Screenshots + TestFlight. |
 | 3.4 | On-device evaluation card: accuracy of each source vs. your accepted categories, computed locally. | TestFlight after a week of reviews. |
 | 3.5 | (Optional) Apple Foundation Models offline provider, evaluated with the harness. | Eval report comparison. |
-| 3.6 | (If P2) Custom categories editor; descriptions feed Jev criteria; mapping to PFC for rollups. | TestFlight. |
+| 3.6 | Custom categories editor (create, rename, archive, edit descriptions that feed Jev criteria). | TestFlight. |
 
 ### Phase 4 — Relay + web client
 
@@ -192,10 +211,10 @@ Hands-on macOS validation waits until a Mac is available (TestFlight for macOS o
 
 | ID | Task | Acceptance |
 |----|------|------------|
-| 6.1 | CloudKit private-zone sync for rules, overrides, budgets, categories, settings (encrypted fields, last-writer-wins). Requires the iCloud capability on the App ID (agent provides exact steps; you click through in the developer portal). | Two TestFlight installs (iPhone + iPad, or later Mac) converge. |
+| 6.1 | Encrypted change-log sync over CloudKit (one generic `ChangeEntry` record type, payload in `encryptedValues`, hybrid-logical-clock last-writer-wins, snapshots). Schema stays in the CloudKit development environment until you approve promotion to production (permanent). Requires the iCloud capability on the App ID (agent provides exact steps; you click through in the developer portal). | Two TestFlight installs (iPhone + iPad, or later Mac) converge. |
 | 6.2 | Optional iCloud Keychain sync for Plaid access tokens. | Second device syncs without re-linking. |
 | 6.3 | `.lfmbackup` format (Swift + TS), import/export UI. | Round-trip test in both cores. |
-| 6.4 | `tools/import-legacy`: current `.data/*` + `budgets.yml` → `.lfmbackup` (run later on your Mac). | Tested with synthetic legacy files. |
+| 6.4 | `tools/import-legacy`: merchant rules from `.data/category-overrides.json` + `budgets.yml` → `.lfmbackup`, mapped onto the new taxonomy (run later on your Mac). | Tested with synthetic legacy files. |
 
 ### Phase 7 — Insights and AI chat
 
@@ -212,7 +231,7 @@ Hands-on macOS validation waits until a Mac is available (TestFlight for macOS o
 |----|------|------------|
 | 8.1 | Production readiness checklist: Plaid Production keys entered by you in-app, OAuth institutions verified, backup nudges. | **Gate G4**: you link a real bank on your phone. |
 | 8.2 | Investments port (holdings, CSV import) to the new clients. | TestFlight. |
-| 8.3 | Retire legacy UI; shrink the Express server into `services/relay`; update README, runbooks. | CI green; docs updated. |
+| 8.3 | Delete `legacy/`; update README, AGENTS.md, and runbooks for the new clients. | CI green; docs updated. |
 
 ---
 
@@ -220,8 +239,10 @@ Hands-on macOS validation waits until a Mac is available (TestFlight for macOS o
 
 ```mermaid
 flowchart LR
+  D[Phase −1 decisions A1–A8] --> G0
+  D --> P1
   S[Setup S1–S5] --> G0[0.4 TestFlight hello world · G0]
-  A02[0.2 scaffold] --> A07[0.7 fixtures] --> P1[Phase 1 cores]
+  A02[0.2 scaffold] --> A02b[0.2b taxonomy + algorithms spec] --> A07[0.7 fixtures] --> P1[Phase 1 cores]
   A02 --> A03[0.3 Swift on Linux] --> P1
   G0 --> G2[0.6 Plaid spikes · G2]
   C05[0.5 Jev eval · G1] --> P3[Phase 3 Jev]
@@ -236,7 +257,8 @@ flowchart LR
   P7 --> P8
 ```
 
-- Run **0.2, 0.4, and 0.5 in parallel on day one**: they are independent, and G0/G1 answer the two biggest unknowns (can you ship to your phone without a Mac, and is Jev good enough).
+- **Before sign-off**, 0.2, 0.2b, 0.3, 0.5, and 0.6a can start; none of them commits to a one-way door.
+- **Right after A1 + A2 are approved**, start 0.4: G0 (can you ship to your phone without a Mac) and G1 (is Jev good enough) are the two biggest unknowns.
 - After Phase 1, the **iOS lane** (Phase 2) and the **web lane** (Phase 4) proceed in parallel.
 - Keep at most two or three agents touching `apps/apple` at once to limit `project.yml` and UI merge conflicts.
 
@@ -250,7 +272,9 @@ flowchart LR
 
 ```
 Implement task <ID> from docs/design/implementation-plan.md
-(issue #<n>). Follow the design in docs/design/multi-client-design.md.
+(issue #<n>). Follow the design in docs/design/multi-client-design.md
+and approved decisions in docs/design/decisions.md. If the task would
+cross an unapproved one-way door, stop and ask me instead.
 Definition of done: CI green; for UI work attach demo-mode
 screenshots (and a video for web) to the PR; list anything I must
 do on my phone to validate. Do not ask for production Plaid keys.
